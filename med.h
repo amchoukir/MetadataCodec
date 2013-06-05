@@ -14,14 +14,15 @@
 struct md_enc_;
 typedef struct md_enc_ md_enc_t;
 
-#define MED_IS_OK(err) ((err) == 0)
-#define MED_IS_ERROR(err) (!MED_IS_OK(err))
 
 typedef enum med_err_ {
     MED_OK,     /**< Sucess*/
     MED_MEM,    /**< Not enough space*/
     MED_BAD     /**< Improper arguments supplied*/
 }med_err_t;
+
+#define MED_IS_OK(err) ((err) == MED_OK)
+#define MED_IS_ERROR(err) (!MED_IS_OK(err))
 
 /** med_encode
  *

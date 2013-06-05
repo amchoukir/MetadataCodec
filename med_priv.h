@@ -17,9 +17,10 @@ typedef struct md_tag_ {
     struct md_tag_* next; /**< Last item should be NULL*/
 } md_tag_t;
 
+#define MED_PEN_STD 0
 typedef struct md_pen_ {
     uint32_t   id;         /**< Private Enterprise Number assigned by IANA 
-                                  0 is standard*/
+                                #MED_PEN_STD is standard*/
     md_tag_t* upstream;   /**< Upstream tags, NULL if none*/
     md_tag_t* downstream; /**< Downstream tags, NULL if none*/
     struct md_pen_* next;  /**< Last item should be NULL*/
@@ -31,9 +32,12 @@ typedef struct md_sec_ {
     uint8_t* payload;   /**< Security scheme dependent payload*/
 }md_sec_t;
 
+#define MED_PROD_EP  0
+#define MED_PROD_NET 1
 typedef struct md_producer_ {
-    uint16_t type;              /**< 0 is endpoint*/
-    uint16_t precedence;        /**< Administrative precedence of this producer
+    uint16_t type;              /**< Endpoint: #MED_PROD_EP,
+                                     Network: #MED_PROD_NET*/
+    uint32_t precedence;        /**< Administrative precedence of this producer
                                  For endpoint this is not used*/
     md_sec_t* token;            /**< Security Token, NULL if none*/
     md_pen_t* pens;             /**< Standard and vendor specific tags*/
