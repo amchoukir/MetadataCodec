@@ -11,8 +11,8 @@
 #include <stdint.h>
 #include <stddef.h>
 
-struct md_producer_;
-typedef struct md_producer_ md_producer_t;
+struct md_enc_;
+typedef struct md_enc_ md_enc_t;
 
 #define MED_IS_OK(err) ((err) == 0)
 #define MED_IS_ERROR(err) (!MED_IS_OK(err))
@@ -38,7 +38,7 @@ typedef enum med_err_ {
  */
 med_err_t med_encode(uint8_t* buf,
                      size_t* len,
-                     md_producer_t* prods);
+                     md_enc_t* enc);
 
 /** allocator
  *
@@ -85,7 +85,7 @@ typedef struct med_mem_ {
  */
 med_err_t med_decode(const uint8_t* buf,
                      size_t* len,
-                     md_producer_t** prod,
+                     md_enc_t* enc,
                      med_mem_t mem);
 /** med_sizeof
  *
@@ -98,7 +98,7 @@ med_err_t med_decode(const uint8_t* buf,
  *  @return #med_err_t
  *
  */
-med_err_t med_sizeof(md_producer_t* prods,
+med_err_t med_sizeof(md_enc_t* enc,
                      size_t* len);
 
 #endif /* __MED_H__ */
