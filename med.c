@@ -328,7 +328,7 @@ static med_err_t med_validate_preamble(md_enc_t* enc, void* ctx)
     uint8_t ep_found = 0;
 
     /* Check for duplicate endpoint section
-     * or for producer with duplicate precedence*/
+     * and for producer with duplicate precedence*/
     current = enc->prods;
     ep_found = MED_PROD_EP == current->type ? 1 : 0;
     while (current) {
@@ -389,10 +389,6 @@ static med_err_t med_validate_prod(md_producer_t* prod, void* ctx)
         tmp = current->next;
         while (tmp) {
             if (MED_PEN_STD == tmp->id) {
-                if(std_found) {
-                    DEBUG_INVALID;
-                    return MED_BAD;
-                }
                 std_found = 1;
             }
             if (tmp->id == current->id) {
@@ -448,6 +444,7 @@ static med_err_t med_validate_vnd(md_pen_t* pen, void*ctx)
 
 static med_err_t med_validate_direction(md_tag_t* tags, void* ctx)
 {
+    /* There is nothing to validate per direction*/
     return MED_OK;
 }
 
@@ -495,7 +492,6 @@ static med_err_t med_walk_direction(md_tag_t* tags,
 
     while (tags) {
         if (MED_IS_ERROR(err = op->tlv(tags, ctx))) {
-            DEBUG_INVALID;
             return err;
         }
         tags = tags->next;
