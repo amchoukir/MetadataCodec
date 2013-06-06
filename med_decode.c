@@ -65,8 +65,10 @@ static bool consume1(uint8_t *value, uint8_t const **data, size_t *remain)
         if (NULL != value) {
             *value = **data;
         }
-        *data += size;
         *remain -= size;
+        DECODE_DBG("consume %02X (%u bytes left)",(*data)[0],
+                                                        (unsigned int)*remain);
+        *data += size;
         return true;
     }
     return false;
@@ -79,8 +81,10 @@ static bool consume2(uint16_t *value, uint8_t const **data, size_t *remain)
         if (NULL != value) {
             *value = GETSHORT(*data);
         }
-        *data += size;
         *remain -= size;
+        DECODE_DBG("consume %02X %02X (%u bytes left)",(*data)[0],(*data)[1],
+                                                        (unsigned int)*remain);
+        *data += size;
         return true;
     }
     return false;
@@ -93,8 +97,11 @@ static bool consume4(uint32_t *value, uint8_t const **data, size_t *remain)
         if (NULL != value) {
             *value = GETLONG(*data);
         }
-        *data += size;
         *remain -= size;
+        DECODE_DBG("consume %02X %02X %02X %02X (%u bytes left)",
+                        (*data)[0],(*data)[1],(*data)[2],(*data)[3],
+                                                (unsigned int)*remain);
+        *data += size;
         return true;
     }
     return false;
@@ -183,6 +190,7 @@ static bool _decode_tlvs(med_mem_t const *mem, md_tag_t **const list_head,
         }
         new_tag->next = *list_head;
         *list_head = new_tag;
+        DECODE_DBG("New TLV: t:0x%04X l:0x%04X",new_tag->type,new_tag->length);
     }
 
     return true;
@@ -194,7 +202,7 @@ static bool decode_producer_subblocks(med_mem_t const *mem,uint16_t block_type,
     uint16_t pen_length;
     uint16_t block_length;
 
-    DECODE_DBG("available bytes:%u",(unsigned int)*remain);
+    DECODE_DBG("available bytes:%u, block type 0x%02X",(unsigned int)*remain,block_type);
 
     switch (block_type) {
     case MED_SEC_TYPE:
@@ -269,16 +277,25 @@ static bool decode_producer_subblocks(med_mem_t const *mem,uint16_t block_type,
                           buffer,block_length)) {
             REPORT_FAILURE;
         }
+        *remain -= block_length;
         break;
+    case MED_PROD_TYPE:
+        DECODE_DBG("> next producer");
+        return true;
     default:
-        return false;
+        DECODE_DBG("Unexpected block type 0x%04X",block_type);
+        REPORT_FAILURE;
     }
     if (0 != *remain) {
-        uint16_t next_block_type;
-        if (!consume2(&next_block_type,buffer,remain)) {
-            REPORT_FAILURE;
+        uint16_t next_block_type = GETSHORT(*buffer);
+        DECODE_DBG("Next block type 0x%04X",next_block_type);
+        if (MED_PROD_TYPE != next_block_type) {
+            if (!consumeX(2,buffer,remain)) {
+                REPORT_FAILURE;
+            }
+            return decode_producer_subblocks(mem,next_block_type,prod,
+                                                      buffer, remain);
         }
-        return decode_producer_subblocks(mem,next_block_type,prod,buffer,remain);
     }
     return true;
 }
@@ -302,6 +319,7 @@ static bool decode_producer_block(med_mem_t const *mem,md_producer_t**prod,
     if (!consume2(&block_type,buffer,remain)) {
         REPORT_FAILURE;
     }
+    DECODE_DBG("block type 0x%04X",block_type);
     /* This producer block may be the first one, in which case it can be the
        default endpoint producer, in which case the buffer starts with either
        a security block, or a downstream block, or an upstream block, or a
@@ -344,6 +362,11 @@ static bool decode_producer_block(med_mem_t const *mem,md_producer_t**prod,
             freeprod(mem,new_producer);
             REPORT_FAILURE;
         }
+        DECODE_DBG("precedence: 0x%08X",new_producer->precedence);
+        if (!consume2(&block_type,buffer,remain)) {
+            REPORT_FAILURE;
+        }
+        DECODE_DBG("Sub-block type 0x%04X",block_type);
         break;
     default:
         REPORT_FAILURE;
@@ -437,7 +460,8 @@ med_err_t med_decode_producers(const uint8_t*const buf,
     }
 
     while (0 != remain) {
-        if (!decode_producer_block(&_mem,&head_producer, &data, &remain)) {
+        DECODE_DBG("-- decode a producer");
+        if (!decode_producer_block(&_mem, &head_producer, &data, &remain)) {
             *len = buffer_length - remain;
             retcode = MED_BAD;
             break;
