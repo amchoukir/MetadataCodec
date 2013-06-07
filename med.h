@@ -102,4 +102,28 @@ med_err_t med_decode(const uint8_t* buf,
 med_err_t med_sizeof(md_enc_t* enc,
                      size_t* len);
 
+/* Walk related function and structs */
+#include <stdbool.h>
+typedef bool (*med_tlv_callback) (uint16_t type, uint16_t length,
+                                                        void *value, void* ctx);
+typedef bool (*med_upstream_callback) (void* ctx);
+typedef bool (*med_downstream_callback) (void* ctx);
+typedef bool (*med_vnd_callback) (uint32_t pen_value, void* ctx);
+typedef bool (*med_token_callback) (uint16_t sec_len, uint16_t sec_scheme,
+                                                void *sec_payload, void* ctx);
+typedef bool (*med_prod_callback) (uint32_t precedence, void* ctx);
+typedef bool (*med_preamble_callback) (void* ctx);
+
+typedef struct {
+    med_tlv_callback tlv;
+    med_upstream_callback upstream;
+    med_downstream_callback downstream;
+    med_vnd_callback vnd;
+    med_token_callback token;
+    med_prod_callback prod;
+    med_preamble_callback preamble;
+} med_walk_callbacks_t;
+
+med_err_t med_walk_public(md_enc_t const *enc, med_walk_callbacks_t const *cb,void *ctx);
+
 #endif /* __MED_H__ */
