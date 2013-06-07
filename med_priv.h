@@ -10,6 +10,30 @@
 #include "med.h"
 #include <stdint.h>
 
+/* Current encoding version*/
+#define MED_VERSION 1
+/* Version Length*/
+#define MED_VER_LEN 1
+/* Minimum length of encoding
+ * Version and Upstream or 
+ * Downstream TLV with one tag*/
+#define MED_MIN_LENGTH 10
+/* The HDR of a TLV is T+L*/
+#define MED_TLV_HDR 4
+/* Security scheme length*/
+#define MED_SCHEME_LEN 2
+/* Producer Marker Length */
+#define MED_PROD_LEN 4
+/* Vendor Marker Length*/
+#define MED_PEN_LEN 4
+
+/* Encoding structure types*/
+#define MED_SEC_TYPE    0
+#define MED_UP_TYPE     1
+#define MED_DN_TYPE     2
+#define MED_VND_TYPE    3
+#define MED_PROD_TYPE   4
+
 typedef struct md_tag_ {
     uint16_t type;
     uint16_t length;
@@ -45,9 +69,17 @@ typedef struct md_producer_ {
 }md_producer_t;
 
 struct md_enc_ {
-    md_producer_t* prods;
+    md_producer_t* prods;   /**< Producers encoding structures*/
+    med_mem_t mem;          /**< Encoding instance memory model*/
+    md_producer_t* prod;    /**< Current producer*/
+    md_pen_t* pen;          /**< Current pen*/
+    uint32_t precedence;     /**< Set producer precedence*/
+    uint16_t type;           /**< Set producer type*/
+    uint16_t dir;            /**< Set direction, #MED_UP_TYPE or #MED_DN_TYPE*/
+    uint32_t id;             /**< Set PEN id, #MED_PEN_STD is standard*/
 };
 
+/* Encoding operation callbacks */
 typedef med_err_t (*med_tlv_op) (md_tag_t* tag, void* ctx);
 typedef med_err_t (*med_upstream_op) (md_tag_t* tags, void* ctx);
 typedef med_err_t (*med_downstream_op) (md_tag_t* tags, void* ctx);
@@ -66,29 +98,6 @@ typedef struct med_op_ {
     med_preamble_op preamble;
 }med_op_t;
 
-/* Current encoding version*/
-#define MED_VERSION 1
-/* Version Length*/
-#define MED_VER_LEN 1
-/* Minimum length of encoding
- * Version and Upstream or 
- * Downstream TLV with one tag*/
-#define MED_MIN_LENGTH 10
-/* The HDR of a TLV is T+L*/
-#define MED_TLV_HDR 4
-/* Security scheme length*/
-#define MED_SCHEME_LEN 2
-/* Producer Marker Length */
-#define MED_PROD_LEN 4
-/* Vendor Marker Length*/
-#define MED_PEN_LEN 4
-
-/* Encoding structure types*/
-#define MED_SEC_TYPE    0
-#define MED_UP_TYPE     1
-#define MED_DN_TYPE     2
-#define MED_VND_TYPE    3
-#define MED_PROD_TYPE   4
 
 /*Big/Little Endian Macros */
 #define PUTSHORT_BASE(b, s) uint16_t t_s = (uint16_t)(s);\
@@ -126,6 +135,13 @@ void* med_memcpy(void* dst, void* src, size_t len);
 void med_dump_buf(const void* sp, size_t len);
 int med_memcmp(const void* sp1, const void* sp2, size_t len);
 
+/* Decode */
+med_err_t med_decode_producers(const uint8_t*const buf,
+                                 size_t* len,
+                                 md_producer_t** prod,
+                                 med_mem_t const* mem);
+#define medmemcpy memcpy
+#define medmemset memset
 
 /* Decode */
 med_err_t med_decode_producers(const uint8_t*const buf,

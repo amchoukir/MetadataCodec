@@ -12,7 +12,6 @@
 #define TEST_PASS(str, ...) TEST_STATE("PASS: " str, ##__VA_ARGS__)
 #define TEST_FAIL(str, ...) TEST_STATE("FAIL: " str, ##__VA_ARGS__)
 
-#if 0
 static void* test_alloc(size_t size, void* ctx)
 {
     return malloc(size);
@@ -22,10 +21,14 @@ static void test_dealloc(void* ptr, void* ctx)
 {
     free(ptr);
 }
-#endif
+int test_decode(void);
 
 int main(void)
 {
+
+    /* Test decode */
+    test_decode();
+
     /* Basic tests*/
     {
         md_enc_t enc = {0};
@@ -126,6 +129,67 @@ int main(void)
             return 1;
         }
         TEST_PASS("NULL encoding");
+    }
+
+    /* Basic tests External*/
+    {
+        md_enc_t enc;
+        uint32_t bw = 0;
+        uint32_t appid = 0;
+        size_t len = 0;
+        size_t expected_len = 25;
+        /* version | UP [bw=10] | DN[appid=144] */
+        uint8_t expected_encoding[25] = { MED_VERSION, MED_UP_TYPE >> 8, MED_UP_TYPE,
+            0x00, 0x08, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00,
+            0x00, 0x0A, MED_DN_TYPE >> 8, MED_DN_TYPE,
+            0x00, 0x08, 0x00, 0x01, 0x00, 0x04, 0x00,
+            0x00, 0x00, 0x90
+        };
+        uint8_t buf[25] = {0};
+        med_mem_t mem = {0};
+
+
+        /* Setup */
+        mem.alloc = test_alloc;
+        mem.dealloc = test_dealloc;
+        med_init(&enc, &mem);
+        PUTLONG(&bw, 10);
+        med_add_tag(&enc, MED_TAG_BW, sizeof(bw), (uint8_t*)&bw);
+        med_set_downstream(&enc);
+        PUTLONG(&appid, 144);
+        med_add_tag(&enc, MED_TAG_APP_ID, sizeof(appid), (uint8_t*)&appid);
+
+        /* Sizeof */
+        if (MED_IS_ERROR(med_sizeof(&enc, &len))) {
+            TEST_FAIL("Sizeof failed at: %zu", len);
+            return 1;
+        }
+
+        if (len != expected_len) {
+            TEST_FAIL("Expected sizeof: %zu got %zu", expected_len, len);
+            return 1;
+        }
+
+        TEST_PASS("Expected and returned len match: %zu", len);
+
+        /* Encode */
+        if (MED_IS_ERROR(med_encode(buf, &len, &enc))) {
+            TEST_FAIL("Encode failed at: %zu", len);
+            return 1;
+        }
+
+        if (0 != med_memcmp(expected_encoding, buf, expected_len)) {
+            TEST_FAIL("The two buffers don't match:");
+            TEST_FAIL("Expected: %zu\n", expected_len);
+            med_dump_buf(expected_encoding, expected_len);
+            TEST_FAIL("Received: %zu\n", len);
+            med_dump_buf(buf, expected_len);
+            return 1;
+        }
+
+        TEST_PASS("The two buffer match");
+
+
     }
 
     /* Test validation producer*/

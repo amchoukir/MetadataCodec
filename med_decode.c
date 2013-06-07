@@ -118,8 +118,6 @@ static bool _consumeX(size_t size, uint8_t const **data, size_t *remain)
     }
     return false;
 }
-#define medmemcpy memcpy
-#define medmemset memset
 /* -------------------------------------------------------------------------- */
 static md_pen_t* _create_pen(med_mem_t const *mem)
 {

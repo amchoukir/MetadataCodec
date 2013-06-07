@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include "med_priv.h"
 #include "med.h"
-int main(int argc,char *argv[])
+int test_decode(void)
 {
     #if 0
     const uint8_t encoded_buffer[] = {
@@ -72,7 +72,7 @@ int main(int argc,char *argv[])
             printf("\n");
     }
     printf("\n");
-    if (0 == memcmp(buf,encoded_buffer,needed)) {
+    if (0 == med_memcmp(buf,encoded_buffer,needed)) {
         printf("YOUPI!!!!\n");
     }
 

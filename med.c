@@ -32,6 +32,18 @@ int med_memcmp(const void* sp1, const void* sp2, size_t len)
     return 0;
 }
 
+void* med_memset(void *sp, int c, size_t len)
+{
+    char *p = sp;
+    size_t i;
+
+    for (i=0; i<len; i++) {
+        p[i] = c;
+    }
+
+    return sp;
+}
+
 void med_dump_buf(const void* sp, size_t len)
 {
     size_t i;
@@ -59,6 +71,403 @@ void* med_memcpy(void* dst, void* src, size_t len)
 
     return dst;
 }
+
+
+med_err_t med_init(md_enc_t* enc, med_mem_t* mem)
+{
+    if (!enc || !mem) {
+        DEBUG_INVALID;
+        return MED_BAD;
+    }
+    med_memset(enc, 0, sizeof(md_enc_t));
+    enc->type = MED_PROD_EP;
+    enc->id = MED_PEN_STD;
+    enc->dir = MED_UP_TYPE;
+    med_memcpy(&(enc->mem), mem, sizeof(med_mem_t));
+    return MED_OK;
+}
+
+static void lookup_producer(md_enc_t* enc,
+                                 uint16_t type,
+                                 uint32_t precedence,
+                                 md_producer_t** prod_pred,
+                                 md_producer_t** prod)
+{
+    md_producer_t* cur;
+    md_producer_t* prev;
+
+    *prod = NULL;
+    *prod_pred = NULL;
+    if (!enc->prods) {
+        return;
+    }
+
+    prev = NULL;
+    cur = enc->prods;
+    while (cur) {
+        if (cur->type == type
+            && (MED_PROD_EP == type
+                || cur->precedence == precedence)){
+            *prod = cur;
+            break;
+        }
+        prev = cur;
+        cur = cur->next;
+    }
+    *prod_pred = prev;
+}
+
+static void lookup_pen(md_enc_t* enc,
+                            uint32_t id,
+                            md_pen_t** pen_pred,
+                            md_pen_t** pen)
+{
+    md_pen_t* cur;
+    md_pen_t* prev;
+
+    *pen_pred = NULL;
+    *pen = NULL;
+    if (!enc->prod) {
+        return;
+    }
+
+    prev = NULL;
+    cur = enc->prod->pens;
+    while (cur) {
+        if (cur->id == id) {
+            *pen = cur;
+            break;
+        }
+        prev = cur;
+        cur = cur->next;
+    }
+    *pen_pred = prev;
+}
+
+static void lookup_tag(md_enc_t* enc,
+                            uint16_t dir,
+                            uint16_t type,
+                            md_tag_t** tag)
+{
+    md_tag_t* tags;
+
+    *tag = NULL;
+    if (!enc->pen) {
+        return;
+    }
+    tags = (MED_UP_TYPE == dir) ? enc->pen->upstream : enc->pen->downstream;
+    while (tags) {
+        if (tags->type == type) {
+            *tag = tags;
+            return;
+        }
+        tags = tags->next;
+    }
+}
+
+static med_err_t set_or_create_producer(md_enc_t* enc)
+{
+    md_producer_t* prod_pred;
+    md_producer_t* prod;
+
+    /* This is the producer type not the tag type*/
+    lookup_producer(enc, enc->type, enc->precedence, &prod_pred, &prod);
+    if (!prod) {
+        prod = enc->mem.alloc(sizeof(md_producer_t), enc->mem.alloc_ctx);
+        if (!prod) {
+            DEBUG_INVALID;
+            return MED_MEM;
+        }
+        med_memset(prod, 0, sizeof(md_producer_t));
+        prod->type = enc->type;
+        prod->precedence = enc->precedence;
+        if (MED_PROD_EP == enc->type) {
+            prod->next = enc->prods;
+            enc->prods = prod;
+        } else if (!prod_pred) {
+            enc->prods = prod;
+        } else {
+            prod_pred->next = prod;
+        }
+    }
+    /* TODO: Change to cur_prod*/
+    enc->prod = prod;
+
+    return MED_OK;
+}
+
+med_err_t med_add_tag(md_enc_t* enc,
+                      uint16_t type,
+                      uint16_t length,
+                      uint8_t* value)
+{
+    md_pen_t* pen_pred;
+    md_pen_t* pen;
+    md_tag_t* tag;
+    med_err_t err;
+
+    if (!enc || !length || !value) {
+        return MED_BAD;
+    }
+
+    /* If we are adding to the same producer
+     * skip producer lookup and allocation*/
+    if (enc->prod
+        && enc->prod->type == enc->type
+        && enc->prod->precedence == enc->precedence) {
+        goto pen;
+    }
+
+    if (MED_IS_ERROR(err = set_or_create_producer(enc))) {
+        return err;
+    }
+
+pen:
+
+    /* If we are adding for the same pen
+     * skip the pen lookup and allocation*/
+    if (enc->pen
+        && enc->pen->id == enc->id) {
+        goto tlv;
+    }
+
+    lookup_pen(enc, enc->id, &pen_pred, &pen);
+    if (!pen) {
+        pen = enc->mem.alloc(sizeof(md_pen_t), enc->mem.alloc_ctx);
+        if (!pen) {
+            DEBUG_INVALID;
+            return MED_MEM;
+        }
+        med_memset(pen, 0, sizeof(md_pen_t));
+        pen->id = enc->id;
+        /* TODO: change prod to cur_prod*/
+        if (MED_PEN_STD == enc->id){
+            pen->next = enc->prod->pens;
+            enc->prod->pens = pen;
+        }else if (!pen_pred) {
+            enc->prod->pens = pen;
+        } else {
+            pen_pred->next = pen;
+        }
+
+    }
+    /* TODO: Change pen to cur_pen*/
+    enc->pen = pen;
+
+tlv:
+
+    lookup_tag(enc, enc->dir, type, &tag);
+    if (!tag) {
+        tag = enc->mem.alloc(sizeof(md_tag_t), enc->mem.alloc_ctx);
+        if (!tag) {
+            DEBUG_INVALID;
+            return MED_MEM;
+        }
+        med_memset(tag, 0, sizeof(md_tag_t));
+        tag->type = type;
+        if (enc->dir == MED_UP_TYPE) {
+            tag->next = pen->upstream;
+            pen->upstream = tag;
+        } else {
+            tag->next = pen->downstream;
+            pen->downstream = tag;
+        }
+    } else {
+        if (tag->length != length) {
+            enc->mem.dealloc(tag->value, enc->mem.dealloc_ctx);
+            tag->value = NULL;
+        }
+    }
+    tag->length = length;
+    if (!tag->value) {
+        tag->value = enc->mem.alloc(length, enc->mem.alloc_ctx);
+    }
+    med_memcpy(tag->value, value, length);
+
+
+    return MED_OK;
+}
+med_err_t med_add_tok(md_enc_t* enc,
+                         uint16_t scheme,
+                         uint16_t length,
+                         uint8_t* payload)
+{
+    md_sec_t* token;
+    med_err_t err;
+
+    if (!enc || !length || !payload) {
+        DEBUG_INVALID;
+        return MED_BAD;
+    }
+
+    /* If we are adding to the same producer
+     * skip producer lookup and allocation*/
+    if (!enc->prod
+        || enc->prod->type != enc->type
+        || enc->prod->precedence != enc->precedence) {
+        if (MED_IS_ERROR(err = set_or_create_producer(enc))) {
+            return err;
+        }
+    }
+
+    if (!enc->prod->token) {
+        token = enc->mem.alloc(sizeof(md_sec_t), enc->mem.alloc_ctx);
+        med_memset(token, 0, sizeof(md_sec_t));
+        enc->prod->token = token;
+    } else {
+        enc->mem.dealloc(enc->prod->token->payload, enc->mem.dealloc_ctx);
+        enc->prod->token->payload = NULL;
+    }
+    token->scheme = scheme;
+    token->length = length;
+    token->payload = enc->mem.alloc(length, enc->mem.alloc_ctx);
+    med_memcpy(token->payload, payload, length);
+
+    return MED_OK;
+}
+
+med_err_t med_set_default(md_enc_t* enc)
+{
+    if (!enc) {
+        DEBUG_INVALID;
+        return MED_BAD;
+    }
+
+    enc->type = MED_PROD_EP;
+    enc->id = MED_PEN_STD;
+    enc->dir = MED_UP_TYPE;
+
+    return MED_OK;
+}
+
+med_err_t med_set_ep(md_enc_t* enc)
+{
+    if (!enc) {
+        DEBUG_INVALID;
+        return MED_BAD;
+    }
+
+    enc->type = MED_PROD_EP;
+    enc->precedence = 0;
+
+    return MED_OK;
+}
+
+med_err_t med_set_net(md_enc_t* enc, uint32_t precedence)
+{
+    if (!enc) {
+        DEBUG_INVALID;
+        return MED_BAD;
+    }
+
+    enc->type = MED_PROD_NET;
+    enc->precedence = precedence;
+
+    return MED_OK;
+}
+
+med_err_t med_set_std(md_enc_t* enc)
+{
+    if (!enc) {
+        DEBUG_INVALID;
+        return MED_BAD;
+    }
+
+    enc->id = MED_PEN_STD;
+
+    return MED_OK;
+}
+
+med_err_t med_set_vnd(md_enc_t* enc, uint32_t id)
+{
+    if (!enc) {
+        DEBUG_INVALID;
+        return MED_BAD;
+    }
+
+    enc->id = id;
+
+    return MED_OK;
+}
+
+med_err_t med_set_upstream(md_enc_t* enc)
+{
+    if (!enc) {
+        DEBUG_INVALID;
+        return MED_BAD;
+    }
+
+    enc->dir = MED_UP_TYPE;
+
+    return MED_OK;
+}
+
+med_err_t med_set_downstream(md_enc_t* enc)
+{
+    if (!enc) {
+        DEBUG_INVALID;
+        return MED_BAD;
+    }
+
+    enc->dir = MED_DN_TYPE;
+
+    return MED_OK;
+}
+
+uint8_t  med_is_ep(md_enc_t* enc)
+{
+    if (!enc)
+    {
+        return -1;
+    }
+    return enc->type == MED_PROD_EP;
+}
+
+uint8_t  med_is_net(md_enc_t* enc)
+{
+    if (!enc)
+    {
+        return -1;
+    }
+    return enc->type == MED_PROD_NET;
+}
+
+uint8_t  med_is_std(md_enc_t* enc)
+{
+    if (!enc)
+    {
+        return -1;
+    }
+    return enc->id == MED_PEN_STD;
+}
+
+uint8_t  med_is_vnd(md_enc_t* enc)
+{
+    if (!enc)
+    {
+        return -1;
+    }
+    return enc->id != MED_PEN_STD;
+}
+
+uint8_t  med_is_up(md_enc_t* enc)
+{
+    if (!enc)
+    {
+        return -1;
+    }
+    return enc->dir == MED_UP_TYPE;
+}
+
+uint8_t  med_is_dn(md_enc_t* enc)
+{
+    if (!enc)
+    {
+        return -1;
+    }
+    return enc->dir == MED_DN_TYPE;
+}
+
 /* ------------------------------------------------------------------
  *          End common
  * ------------------------------------------------------------------
