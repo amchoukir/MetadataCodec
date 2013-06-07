@@ -132,3 +132,7 @@ int main (int argc, char *argv[])
 
     return 0;
 }
+
+
+
+/// gcc -Wall -O0 -g -o test  med.c med_decode.c  test.c -DMED_DEBUG
