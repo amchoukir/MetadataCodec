@@ -1,10 +1,13 @@
 /*------------------------------------------------------------------
- * Debugging utilities
+ * Encode/Decode Metadata Cross Protocol Encoding
  *
+ * @file
+ *
+ * @author Amine Choukir <amchouki@cisco.com>
+ * @author Yann Poupet <ypoupet@cisco.com>
  *
  *------------------------------------------------------------------
  */
-
 #ifndef __MED_DBG_H__
 #define __MED_DBG_H__
 

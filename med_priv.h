@@ -1,10 +1,13 @@
 /*------------------------------------------------------------------
- * Encode/Decode Metadata Cross Protocol Encoding Structures
+ * Encode/Decode Metadata Cross Protocol Encoding
  *
+ * @file
+ *
+ * @author Amine Choukir <amchouki@cisco.com>
+ * @author Yann Poupet <ypoupet@cisco.com>
  *
  *------------------------------------------------------------------
  */
-
 #ifndef __MED_PRIV_H__
 #define __MED_PRIV_H__
 #include "med.h"

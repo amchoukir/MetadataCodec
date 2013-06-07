@@ -1,3 +1,13 @@
+/*------------------------------------------------------------------
+ * Encode/Decode Metadata Cross Protocol Encoding
+ *
+ * @file
+ *
+ * @author Amine Choukir <amchouki@cisco.com>
+ * @author Yann Poupet <ypoupet@cisco.com>
+ *
+ *------------------------------------------------------------------
+ */
 #include "med.h"
 #include "med_priv.h"
 #include <stdint.h>
@@ -28,6 +38,46 @@ int main(void)
 
     /* Test decode */
     test_decode();
+
+    /* Test utilities */
+    {
+        uint8_t buf1[11] = {
+            0x00, 0x01, 0x02, 0x03, 0x04,
+            0x05, 0x06, 0x07, 0x08, 0x03
+            };
+
+        uint8_t buf2[10] = {
+            0x00, 0x01, 0x02, 0x03, 0x04,
+            0x05, 0x06, 0x07, 0x08, 0x09
+        };
+
+        uint8_t buf3[10] = {
+            0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00
+        };
+
+        if (0 == med_memcmp(buf1, buf2, 10)) {
+            TEST_FAIL("Different buffers");
+            return 1;
+        }
+        TEST_PASS("Different buffers");
+
+        if (0 != med_memcmp(buf1, buf2, 10)) {
+            TEST_FAIL("Same buffers");
+        }
+        TEST_PASS("Same buffers");
+
+        med_dump_buf(buf1, 11);
+
+        med_memset(buf2, 0, 10);
+
+        if ( 0 != med_memcmp(buf2, buf3, 10)) {
+            TEST_FAIL("Could not set memory");
+            return 1;
+        }
+        TEST_PASS("Could not set memory");
+
+    }
 
     /* Basic tests*/
     {
@@ -189,8 +239,88 @@ int main(void)
 
         med_free(&enc);
 
+        /* Input validation*/
+        if (MED_IS_OK(med_init(NULL, &mem))) {
+            TEST_FAIL("NULL encoding");
+            return 1;
+        }
+        TEST_PASS("NULL encoding");
+
+        if (MED_IS_OK(med_init(&enc, NULL))) {
+            TEST_FAIL("NULL memory model");
+            return 1;
+        }
+        TEST_PASS("NULL memory model");
+
         TEST_PASS("The two buffer match");
 
+
+    }
+
+    /* Basic token External*/
+    {
+        md_enc_t enc;
+        uint32_t bw = 0;
+        uint32_t appid = 0;
+        size_t len = 0;
+        size_t expected_len = 33;
+        uint16_t tok_payload;
+        /* version | ST[scheme=1, payload=0x00 x01]| UP [bw=10] | DN[appid=144] */
+        uint8_t expected_encoding[33] = { 
+            MED_VERSION, MED_SEC_TYPE >>8, MED_SEC_TYPE,
+            0x00, 0x04, 0x00, 0x01, 0x00, 0x01, MED_UP_TYPE >> 8, MED_UP_TYPE,
+            0x00, 0x08, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00,
+            0x00, 0x0A, MED_DN_TYPE >> 8, MED_DN_TYPE,
+            0x00, 0x08, 0x00, 0x01, 0x00, 0x04, 0x00,
+            0x00, 0x00, 0x90
+        };
+        uint8_t buf[33] = {0};
+        med_mem_t mem = {0};
+
+
+        /* Setup */
+        mem.alloc = test_alloc;
+        mem.dealloc = test_dealloc;
+        med_init(&enc, &mem);
+        PUTSHORT(&tok_payload, 0x0001);
+        med_add_tok(&enc, 1, 2, (uint8_t*)&tok_payload);
+        PUTLONG(&bw, 10);
+        med_add_tag(&enc, MED_TAG_BW, sizeof(bw), (uint8_t*)&bw);
+        med_set_downstream(&enc);
+        PUTLONG(&appid, 144);
+        med_add_tag(&enc, MED_TAG_APP_ID, sizeof(appid), (uint8_t*)&appid);
+
+        /* Sizeof */
+        if (MED_IS_ERROR(med_sizeof(&enc, &len))) {
+            TEST_FAIL("Sizeof failed at: %zu", len);
+            return 1;
+        }
+
+        if (len != expected_len) {
+            TEST_FAIL("Expected sizeof: %zu got %zu", expected_len, len);
+            return 1;
+        }
+
+        TEST_PASS("Expected and returned len match: %zu", len);
+
+        /* Encode */
+        if (MED_IS_ERROR(med_encode(buf, &len, &enc))) {
+            TEST_FAIL("Encode failed at: %zu", len);
+            return 1;
+        }
+
+        if (0 != med_memcmp(expected_encoding, buf, expected_len)) {
+            TEST_FAIL("The two buffers don't match:");
+            TEST_FAIL("Expected: %zu\n", expected_len);
+            med_dump_buf(expected_encoding, expected_len);
+            TEST_FAIL("Received: %zu\n", len);
+            med_dump_buf(buf, expected_len);
+            return 1;
+        }
+
+        med_free(&enc);
+
+        TEST_PASS("The two buffer match");
 
     }
 

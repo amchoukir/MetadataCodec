@@ -1,3 +1,13 @@
+/*------------------------------------------------------------------
+ * Encode/Decode Metadata Cross Protocol Encoding
+ *
+ * @file
+ *
+ * @author Amine Choukir <amchouki@cisco.com>
+ * @author Yann Poupet <ypoupet@cisco.com>
+ *
+ *------------------------------------------------------------------
+ */
 #include <stdlib.h>
 #include <stdbool.h>
 #include <stdio.h>

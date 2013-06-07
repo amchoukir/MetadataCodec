@@ -1,3 +1,13 @@
+/*------------------------------------------------------------------
+ * Encode/Decode Metadata Cross Protocol Encoding
+ *
+ * @file
+ *
+ * @author Amine Choukir <amchouki@cisco.com>
+ * @author Yann Poupet <ypoupet@cisco.com>
+ *
+ *------------------------------------------------------------------
+ */
 #include "med.h"
 #include "med_priv.h"
 #include "med_dbg.h"
@@ -315,6 +325,7 @@ med_err_t med_add_tok(md_enc_t* enc,
         med_memset(token, 0, sizeof(md_sec_t));
         enc->prod->token = token;
     } else {
+        token = enc->prod->token;
         enc->mem.dealloc(enc->prod->token->payload, enc->mem.dealloc_ctx);
         enc->prod->token->payload = NULL;
     }
@@ -618,6 +629,7 @@ static med_err_t med_encode_token(md_sec_t* tok, void* ctx)
     PUTSHORT_MV(encode_ctx->buf, MED_SCHEME_LEN + tok->length);
     PUTSHORT_MV(encode_ctx->buf, tok->scheme);
     med_memcpy(encode_ctx->buf, tok->payload, tok->length);
+    encode_ctx->buf += tok->length;
     *(encode_ctx->len) -= MED_TLV_HDR + MED_SCHEME_LEN + tok->length;
     return MED_OK;
 }
