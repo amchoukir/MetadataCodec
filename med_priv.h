@@ -127,5 +127,11 @@ void med_dump_buf(const void* sp, size_t len);
 int med_memcmp(const void* sp1, const void* sp2, size_t len);
 
 
+/* Decode */
+med_err_t med_decode_producers(const uint8_t*const buf,
+                                 size_t* len,
+                                 md_producer_t** prod,
+                                 med_mem_t const* mem);
+
 #endif /* __MED_PRIV_H__ */
 
