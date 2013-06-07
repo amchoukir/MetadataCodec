@@ -541,3 +541,94 @@ static med_err_t med_walk(md_enc_t* enc,
     }
     return err;
 }
+
+/* Public walking function */
+typedef struct {
+    med_walk_callbacks_t const*callbacks;
+    void *user_context;
+} med_callback_user_t;
+
+/* -------------------------------------------------------------------------- */
+static med_err_t _cb_prod(md_producer_t* prod, void* ctx)
+{
+    med_callback_user_t *cb = (typeof(cb))ctx;
+    if (NULL != cb->callbacks->prod) {
+        (void)cb->callbacks->prod(prod->precedence, cb->user_context);
+    }
+    return MED_OK;
+}
+/* -------------------------------------------------------------------------- */
+static med_err_t _cb_token(md_sec_t* sec, void* ctx)
+{
+    med_callback_user_t *cb = (typeof(cb))ctx;
+    if (NULL != cb->callbacks->token) {
+        (void)cb->callbacks->token(sec->length,sec->scheme,sec->payload,
+                                                        cb->user_context);
+    }
+    return MED_OK;
+}
+/* -------------------------------------------------------------------------- */
+static med_err_t _cb_preamble(md_enc_t* enc, void* ctx)
+{
+    med_callback_user_t *cb = (typeof(cb))ctx;
+    if (NULL != cb->callbacks->preamble) {
+        (void)cb->callbacks->preamble(cb->user_context);
+    }
+    return MED_OK;
+}
+/* -------------------------------------------------------------------------- */
+static med_err_t _cb_downstream(md_tag_t* taglist, void* ctx)
+{
+    med_callback_user_t *cb = (typeof(cb))ctx;
+    if (NULL != cb->callbacks->downstream) {
+        (void)cb->callbacks->downstream(cb->user_context);
+    }
+    return MED_OK;
+}
+/* -------------------------------------------------------------------------- */
+static med_err_t _cb_upstream(md_tag_t* taglist, void* ctx)
+{
+    med_callback_user_t *cb = (typeof(cb))ctx;
+    if (NULL != cb->callbacks->upstream) {
+        (void)cb->callbacks->upstream(cb->user_context);
+    }
+    return MED_OK;
+}
+/* -------------------------------------------------------------------------- */
+static med_err_t _cb_vnd(md_pen_t* pen, void* ctx)
+{
+    med_callback_user_t *cb = (typeof(cb))ctx;
+    if (NULL != cb->callbacks->vnd) {
+        (void)cb->callbacks->vnd(pen->id,cb->user_context);
+    }
+    return MED_OK;
+}
+/* -------------------------------------------------------------------------- */
+static med_err_t _cb_tlv(md_tag_t* tag, void* ctx)
+{
+    med_callback_user_t *cb = (typeof(cb))ctx;
+    if (NULL != cb->callbacks->tlv) {
+        (void)cb->callbacks->tlv(tag->type,tag->length,tag->value,
+                                               cb->user_context);
+    }
+    return MED_OK;
+}
+/* -------------------------------------------------------------------------- */
+med_err_t med_walk_public(md_enc_t const *enc, med_walk_callbacks_t const *cb,void *ctx)
+{
+    med_callback_user_t user_callbacks;
+    user_callbacks.callbacks = cb;
+    user_callbacks.user_context = ctx;
+
+    static const med_op_t operations = {
+        .tlv        = _cb_tlv,
+        .upstream   = _cb_upstream,
+        .downstream = _cb_downstream,
+        .vnd        = _cb_vnd,
+        .token      = _cb_token,
+        .prod       = _cb_prod,
+        .preamble   = _cb_preamble,
+    };
+
+    return med_walk(enc,&operations,&user_callbacks);
+}
