@@ -140,7 +140,7 @@ static md_pen_t* _create_pen(med_mem_t const *mem)
 {
     md_pen_t *pen = mem->alloc(sizeof(md_pen_t),mem->alloc_ctx);
     if (NULL != pen) {
-        medmemset(pen, 0, sizeof(md_pen_t));
+        med_memset(pen, 0, sizeof(md_pen_t));
     }
     return pen;
 }
@@ -149,7 +149,7 @@ static md_sec_t* _create_security(med_mem_t const *mem)
 {
     md_sec_t *sec = mem->alloc(sizeof(md_sec_t),mem->alloc_ctx);
     if (NULL != sec) {
-        medmemset(sec, 0, sizeof(md_sec_t));
+        med_memset(sec, 0, sizeof(md_sec_t));
     }
     return sec;
 }
@@ -161,7 +161,7 @@ static void _freetag(med_mem_t const *mem,md_tag_t *tag)
         mem->dealloc(tag->value,mem->dealloc_ctx);
         tag->value = NULL;
     }
-    medmemset(tag,0xA5,sizeof(*tag));
+    med_memset(tag,0xA5,sizeof(*tag));
     mem->dealloc(tag,mem->dealloc_ctx);
     if (NULL != next) {
         _freetag(mem,next);
@@ -172,7 +172,7 @@ static md_tag_t* _create_tag(med_mem_t const *mem)
 {
     md_tag_t *tag = mem->alloc(sizeof(md_tag_t),mem->alloc_ctx);
     if (NULL != tag) {
-        medmemset(tag,0,sizeof(*tag));
+        med_memset(tag,0,sizeof(*tag));
     }
     return tag;
 }
@@ -199,7 +199,7 @@ static bool _decode_tlvs(med_mem_t const *mem, md_tag_t **const list_head,
             mem->dealloc(new_tag,mem->dealloc_ctx);
             REPORT_FAILURE;
         }
-        medmemcpy(new_tag->value,*buffer,l);
+        med_memcpy(new_tag->value,(void*)*buffer,l);
         if (!_consumeX((size_t)l,buffer,&block_length)) {
             _freetag(mem,new_tag);
             new_tag = NULL;
@@ -251,7 +251,7 @@ static bool _decode_producer_subblocks(med_mem_t const *mem,uint16_t block_type,
             if (NULL == prod->token->payload) {
                 REPORT_FAILURE;
             }
-            medmemcpy(prod->token->payload,*buffer,prod->token->length);
+            med_memcpy(prod->token->payload,(void*)*buffer,prod->token->length);
             if (!_consumeX(prod->token->length,buffer,remain)) {
                 REPORT_FAILURE;
             }
@@ -321,7 +321,7 @@ static md_producer_t *_create_new_producer(med_mem_t const *mem)
 {
     md_producer_t *prod = mem->alloc(sizeof(md_producer_t),mem->alloc_ctx);
     if (NULL != prod) {
-        medmemset(prod, 0, sizeof(md_producer_t));
+        med_memset(prod, 0, sizeof(md_producer_t));
     }
     return prod;
 }
@@ -403,7 +403,7 @@ static void freesec(med_mem_t const *mem,md_sec_t *sec)
         mem->dealloc(sec->payload,mem->dealloc_ctx);
         sec->payload = NULL;
     }
-    medmemset(sec,0xA5,sizeof(*sec));
+    med_memset(sec,0xA5,sizeof(*sec));
     mem->dealloc(sec,mem->dealloc_ctx);
 }
 /* -------------------------------------------------------------------------- */
@@ -418,7 +418,7 @@ static void freepen(med_mem_t const *mem,md_pen_t *pen)
         _freetag(mem,pen->downstream);
         pen->downstream = NULL;
     }
-    medmemset(pen,0xA5,sizeof(*pen));
+    med_memset(pen,0xA5,sizeof(*pen));
     mem->dealloc(pen,mem->dealloc_ctx);
     if (NULL != next) {
         freepen(mem,next);
@@ -436,7 +436,7 @@ void freeprod(med_mem_t const *mem,md_producer_t *prod)
         freepen(mem,prod->pens);
         prod->pens = NULL;
     }
-    medmemset(prod,0xA5,sizeof(*prod));
+    med_memset(prod,0xA5,sizeof(*prod));
     mem->dealloc(prod,mem->dealloc_ctx);
     if (NULL != next) {
         freeprod(mem,next);

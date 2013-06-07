@@ -139,9 +139,6 @@ void med_dump_buf(const void* sp, size_t len);
 int med_memcmp(const void* sp1, const void* sp2, size_t len);
 void* med_memset(void *sp, int c, size_t len);
 
-#define medmemcpy memcpy
-#define medmemset memset
-
 /* Decode */
 med_err_t med_decode_producers(const uint8_t*const buf,
                                  size_t* len,
