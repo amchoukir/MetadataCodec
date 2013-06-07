@@ -466,7 +466,7 @@ uint8_t  med_is_vnd(md_enc_t* enc)
     return enc->id != MED_PEN_STD;
 }
 
-uint8_t  med_is_up(md_enc_t* enc)
+uint8_t  med_is_upstream(md_enc_t* enc)
 {
     if (!enc)
     {
@@ -475,7 +475,7 @@ uint8_t  med_is_up(md_enc_t* enc)
     return enc->dir == MED_UP_TYPE;
 }
 
-uint8_t  med_is_dn(md_enc_t* enc)
+uint8_t  med_is_downstream(md_enc_t* enc)
 {
     if (!enc)
     {

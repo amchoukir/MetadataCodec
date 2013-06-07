@@ -81,6 +81,121 @@ int main(void)
 
     }
 
+    /* Test encoder state functions */
+    {
+        md_enc_t enc = {0};
+
+        if (MED_IS_OK(med_set_default(NULL))) {
+                TEST_FAIL("Set default");
+                return 1;
+        }
+        TEST_PASS("Set default");
+
+        if (MED_IS_OK(med_set_ep(NULL))) {
+                TEST_FAIL("Set endpoint");
+                return 1;
+        }
+        TEST_PASS("Set endpoint");
+
+        med_set_net(&enc, 0);
+
+        if (1 != med_is_net(&enc)) {
+                TEST_FAIL("Is network");
+                return 1;
+        }
+        TEST_PASS("Is network");
+
+        med_set_default(&enc);
+
+        if (1 != med_is_ep(&enc)) {
+                TEST_FAIL("Is endpoint");
+                return 1;
+        }
+        TEST_PASS("Is endpoint");
+
+        med_set_net(&enc, 0);
+        med_set_ep(&enc);
+        if (1 != med_is_ep(&enc)) {
+                TEST_FAIL("Is endpoint");
+                return 1;
+        }
+        TEST_PASS("Is endpoint");
+
+        if (MED_IS_OK(med_set_net(NULL, 0))) {
+                TEST_FAIL("Set network");
+                return 1;
+        }
+        TEST_PASS("Set network");
+
+        if (MED_IS_OK(med_set_std(NULL))) {
+                TEST_FAIL("Set standard");
+                return 1;
+        }
+        TEST_PASS("Set standard");
+
+        if (MED_IS_OK(med_set_vnd(NULL, 1))) {
+                TEST_FAIL("Set vendor");
+                return 1;
+        }
+        TEST_PASS("Set vendor");
+
+        med_set_vnd(&enc, 1);
+
+        if (1 != med_is_vnd(&enc)) {
+                TEST_FAIL("Is vendor");
+                return 1;
+        }
+        TEST_PASS("Is vendor");
+
+        med_set_default(&enc);
+        if (1 != med_is_std(&enc)) {
+                TEST_FAIL("Is standard");
+                return 1;
+        }
+        TEST_PASS("Is standard");
+
+        med_set_vnd(&enc, 1);
+        med_set_std(&enc);
+
+        if (1 != med_is_std(&enc)) {
+                TEST_FAIL("Is standard");
+                return 1;
+        }
+        TEST_PASS("Is standard");
+
+        if (MED_IS_OK(med_set_upstream(NULL))) {
+                TEST_FAIL("Set upstream");
+                return 1;
+        }
+        TEST_PASS("Set upstream");
+
+        if (MED_IS_OK(med_set_downstream(NULL))) {
+                TEST_FAIL("Set downstream");
+                return 1;
+        }
+        TEST_PASS("Set downstream");
+
+        med_set_downstream(&enc);
+
+        if (1 != med_is_downstream(&enc)) {
+                TEST_FAIL("Is downstream");
+                return 1;
+        }
+        TEST_PASS("Is downstream");
+
+        med_set_default(&enc);
+
+        if (1 != med_is_upstream(&enc)) {
+                TEST_FAIL("Is downstream");
+                return 1;
+        }
+        TEST_PASS("Is downstream");
+
+        med_set_downstream(&enc);
+        med_set_upstream(&enc);
+
+    }
+
     /* Basic tests*/
     {
         md_enc_t enc = {0};

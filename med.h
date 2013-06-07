@@ -128,13 +128,85 @@ med_err_t med_add_tag(md_enc_t* enc,
                       uint16_t length,
                       uint8_t* value);
 
+/** med_set_default
+ *
+ *  Reset the encoder to its default state.
+ *  See #med_init for default state
+ *
+ *  @param[in]enc encoding instance
+ *
+ *  @return #med_err_t
+ */
 med_err_t med_set_default(md_enc_t* enc);
+
+/** med_set_ep
+ *
+ *  Change encoder state to encode for the endpoint.
+ *
+ *
+ *  @param[in]enc encoding instance
+ *
+ *  @return #med_err_t
+ */
 med_err_t med_set_ep(md_enc_t* enc);
+
+/** med_set_net
+ *
+ *  Change encoder state to encode for network.
+ *
+ *
+ *  @param[in]enc encoding instance
+ *  @param[in]precedence precedence of the network producer
+ *
+ *  @return #med_err_t
+ */
 med_err_t med_set_net(md_enc_t* enc, uint32_t precedence);
+
+/** med_set_std
+ *
+ *  Change encoder state to encode standard tags.
+ *
+ *
+ *  @param[in]enc encoding instance
+ *
+ *  @return #med_err_t
+ */
 med_err_t med_set_std(md_enc_t* enc);
+
+/** med_set_vnd
+ *
+ *  Change encoder state to encode vendor specific tags.
+ *
+ *
+ *  @param[in]enc encoding instance
+ *  @param[in]id PEN identifier of the vendor
+ *
+ *  @return #med_err_t
+ */
 med_err_t med_set_vnd(md_enc_t* enc, uint32_t id);
+
+/** med_set_upstream
+ *
+ *  Change encoder state to encode for the upstream ddirection.
+ *
+ *
+ *  @param[in]enc encoding instance
+ *
+ *  @return #med_err_t
+ */
 med_err_t med_set_upstream(md_enc_t* enc);
+
+/** med_set_upstream
+ *
+ *  Change encoder state to encode for the upstream ddirection.
+ *
+ *
+ *  @param[in]enc encoding instance
+ *
+ *  @return #med_err_t
+ */
 med_err_t med_set_downstream(md_enc_t* enc);
+
 /** med_is_ep
  *
  *  Is the encoding instance in endpoint state.
@@ -183,7 +255,7 @@ uint8_t  med_is_vnd(md_enc_t* enc);
  *
  *  @return -1 for Invalid, 1 for TRUE, 0 for FALSE
  */
-uint8_t  med_is_up(md_enc_t* enc);
+uint8_t  med_is_upstream(md_enc_t* enc);
 
 /** med_is_dn
  *
@@ -193,7 +265,7 @@ uint8_t  med_is_up(md_enc_t* enc);
  *
  *  @return -1 for Invalid, 1 for TRUE, 0 for FALSE
  */
-uint8_t  med_is_dn(md_enc_t* enc);
+uint8_t  med_is_downstream(md_enc_t* enc);
 
 
 /** med_encode

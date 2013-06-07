@@ -30,7 +30,8 @@ coverage: $(SRC)
 	gcc -o $@ $^ $(CFLAGS) -O0 -static -fprofile-arcs -ftest-coverage
 	./coverage
 	geninfo --no-checksum --output-filename med.info .
-	genhtml -o med_html med.info
+	lcov -r med.info \*test\* -o med_clean.info
+	genhtml -o med_html med_clean.info
 
 static_analysis:
 	cppcheck --force --enable=all .
