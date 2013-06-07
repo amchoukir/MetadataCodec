@@ -256,6 +256,6 @@ typedef struct {
     med_preamble_callback preamble;
 } med_walk_callbacks_t;
 
-med_err_t med_walk_public(md_enc_t const *enc, med_walk_callbacks_t const *cb,void *ctx);
+med_err_t med_walk_public(md_enc_t *enc, med_walk_callbacks_t *cb,void *ctx);
 
 #endif /* __MED_H__ */

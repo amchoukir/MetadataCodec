@@ -9,8 +9,8 @@
 #define MED_TAG_APP_ID      1
 
 #define TEST_STATE(str,...) fprintf(stderr, "\n" str, ##__VA_ARGS__)
-#define TEST_PASS(str, ...) TEST_STATE("PASS: " str, ##__VA_ARGS__)
-#define TEST_FAIL(str, ...) TEST_STATE("FAIL: " str, ##__VA_ARGS__)
+#define TEST_PASS(str, ...) TEST_STATE("PASS[%u]: " str, __LINE__, ##__VA_ARGS__)
+#define TEST_FAIL(str, ...) TEST_STATE("FAIL[%u]: " str, __LINE__, ##__VA_ARGS__)
 
 static void* test_alloc(size_t size, void* ctx)
 {
@@ -519,6 +519,69 @@ int main(void)
 
     }
 
+    /* Test Endpoint External, Vendor 1 up, 1 down*/
+    {
+        md_enc_t enc = {0};
+        uint32_t bw = 0;
+        uint32_t appid = 0;
+        size_t len = 0;
+        const size_t expected_len = 33;
+        /* version | VND = 9 | UP [bw=10] | DN[appid=144] */
+        uint8_t expected_encoding[33] = {
+            MED_VERSION, MED_VND_TYPE >> 8, MED_VND_TYPE,
+            0x00, 0x04, 0x00, 0x00, 0x00, 0x09,
+            MED_UP_TYPE >> 8, MED_UP_TYPE,  0x00, 0x08,
+            0x00, 0x00, 0x00, 0x04, 0x00, 0x00,
+            0x00, 0x0A, MED_DN_TYPE >> 8, MED_DN_TYPE,
+            0x00, 0x08, 0x00, 0x01, 0x00, 0x04,
+            0x00, 0x00, 0x00, 0x90
+        };
+        uint8_t buf[33] = {0};
+        med_mem_t mem = {0};
+
+
+        /* Setup */
+        mem.alloc = test_alloc;
+        mem.dealloc = test_dealloc;
+        med_init(&enc, &mem);
+        med_set_vnd(&enc, 9); /* Cisco PEN*/
+        PUTLONG(&bw, 10);
+        med_add_tag(&enc, MED_TAG_BW, sizeof(bw), (uint8_t*)&bw);
+        med_set_downstream(&enc);
+        PUTLONG(&appid, 144);
+        med_add_tag(&enc, MED_TAG_APP_ID, sizeof(appid), (uint8_t*)&appid);
+
+        /* Sizeof */
+        if (MED_IS_ERROR(med_sizeof(&enc, &len))) {
+            TEST_FAIL("Sizeof failed at: %zu", len);
+            return 1;
+        }
+
+        if (len != expected_len) {
+            TEST_FAIL("Expected sizeof: %zu got %zu", expected_len, len);
+            return 1;
+        }
+
+        TEST_PASS("Expected and returned len match: %zu", len);
+
+        if (MED_IS_ERROR(med_encode(buf, &len, &enc))) {
+            TEST_FAIL("Encode failed at: %zu", len);
+            return 1;
+        }
+
+        if (0 != med_memcmp(expected_encoding, buf, expected_len)) {
+            TEST_FAIL("The two buffers don't match:");
+            TEST_FAIL("Expected: %zu\n", expected_len);
+            med_dump_buf(expected_encoding, expected_len);
+            TEST_FAIL("Received: %zu\n", len);
+            med_dump_buf(buf, expected_len);
+            return 1;
+        }
+
+        TEST_PASS("The two buffer match");
+
+    }
+
     /* Test Network, Standard 1 up, 1 down*/
     {
         md_enc_t enc = {0};
@@ -530,9 +593,9 @@ int main(void)
         uint32_t appid = 0;
         size_t len = 0;
         const size_t expected_len = 33;
-        /* version | Network = 8 | UP [bw=10] | DN[appid=144] */
+        /* version | NET=8 | UP [bw=10] | DN[appid=144] */
         uint8_t expected_encoding[33] = { 
-            MED_VERSION, MED_PROD_TYPE >> 8, MED_PROD_TYPE,
+            MED_VERSION, MED_NET_TYPE >> 8, MED_NET_TYPE,
             0x00, 0x04, 0x00, 0x00, 0x00, 0x08,
             MED_UP_TYPE >> 8, MED_UP_TYPE,
             0x00, 0x08, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00,
@@ -592,6 +655,68 @@ int main(void)
 
     }
 
+    /* Test Network External, Standard 1 up, 1 down*/
+    {
+        md_enc_t enc = {0};
+        uint32_t bw = 0;
+        uint32_t appid = 0;
+        size_t len = 0;
+        const size_t expected_len = 33;
+        /* version | NET=8 | UP [bw=10] | DN[appid=144] */
+        uint8_t expected_encoding[33] = { 
+            MED_VERSION, MED_NET_TYPE >> 8, MED_NET_TYPE,
+            0x00, 0x04, 0x00, 0x00, 0x00, 0x08,
+            MED_UP_TYPE >> 8, MED_UP_TYPE,
+            0x00, 0x08, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00,
+            0x00, 0x0A, MED_DN_TYPE >> 8, MED_DN_TYPE,
+            0x00, 0x08, 0x00, 0x01, 0x00, 0x04, 0x00,
+            0x00, 0x00, 0x90
+        };
+        uint8_t buf[33] = {0};
+        med_mem_t mem = {0};
+
+        /* Setup */
+        mem.alloc = test_alloc;
+        mem.dealloc = test_dealloc;
+        med_init(&enc, &mem);
+        med_set_net(&enc, 8);
+        PUTLONG(&bw, 10);
+        med_add_tag(&enc, MED_TAG_BW, sizeof(bw), (uint8_t*)&bw);
+        med_set_downstream(&enc);
+        PUTLONG(&appid, 144);
+        med_add_tag(&enc, MED_TAG_APP_ID, sizeof(appid), (uint8_t*)&appid);
+
+        /* Sizeof */
+        if (MED_IS_ERROR(med_sizeof(&enc, &len))) {
+            TEST_FAIL("Sizeof failed at: %zu", len);
+            return 1;
+        }
+
+        if (len != expected_len) {
+            TEST_FAIL("Expected sizeof: %zu got %zu", expected_len, len);
+            return 1;
+        }
+
+        TEST_PASS("Expected and returned len match: %zu", len);
+
+        if (MED_IS_ERROR(med_encode(buf, &len, &enc))) {
+            TEST_FAIL("Encode failed at: %zu", len);
+            return 1;
+        }
+
+        if (0 != med_memcmp(expected_encoding, buf, expected_len)) {
+            TEST_FAIL("The two buffers don't match:");
+            TEST_FAIL("Expected: %zu\n", expected_len);
+            med_dump_buf(expected_encoding, expected_len);
+            TEST_FAIL("Received: %zu\n", len);
+            med_dump_buf(buf, expected_len);
+            return 1;
+        }
+
+        TEST_PASS("The two buffer match");
+
+    }
+
     /* Test Network, Vendor 1 up, 1 down*/
     {
         md_enc_t enc = {0};
@@ -603,9 +728,9 @@ int main(void)
         uint32_t appid = 0;
         size_t len = 0;
         const size_t expected_len = 41;
-        /* version | VND = 9 | UP [bw=10] | DN[appid=144] */
+        /* version NET=8 | VND = 9 | UP [bw=10] | DN[appid=144] */
         uint8_t expected_encoding[41] = {
-            MED_VERSION, MED_PROD_TYPE >> 8, MED_PROD_TYPE,
+            MED_VERSION, MED_NET_TYPE >> 8, MED_NET_TYPE,
             0x00, 0x04, 0x00, 0x00, 0x00, 0x08,
             MED_VND_TYPE >> 8, MED_VND_TYPE,
             0x00, 0x04, 0x00, 0x00, 0x00, 0x09,
@@ -670,6 +795,72 @@ int main(void)
 
     }
 
+    /* Test Network External, Vendor 1 up, 1 down*/
+    {
+        md_enc_t enc = {0};
+        uint32_t bw = 0;
+        uint32_t appid = 0;
+        size_t len = 0;
+        const size_t expected_len = 41;
+        /* version | NET=8 | VND = 9 | UP [bw=10] | DN[appid=144] */
+        uint8_t expected_encoding[41] = {
+            MED_VERSION, MED_NET_TYPE >> 8, MED_NET_TYPE,
+            0x00, 0x04, 0x00, 0x00, 0x00, 0x08,
+            MED_VND_TYPE >> 8, MED_VND_TYPE,
+            0x00, 0x04, 0x00, 0x00, 0x00, 0x09,
+            MED_UP_TYPE >> 8, MED_UP_TYPE,  0x00, 0x08,
+            0x00, 0x00, 0x00, 0x04, 0x00, 0x00,
+            0x00, 0x0A, MED_DN_TYPE >> 8, MED_DN_TYPE,
+            0x00, 0x08, 0x00, 0x01, 0x00, 0x04,
+            0x00, 0x00, 0x00, 0x90
+        };
+        uint8_t buf[41] = {0};
+        med_mem_t mem = {0};
+
+
+        /* Setup */
+        mem.alloc = test_alloc;
+        mem.dealloc = test_dealloc;
+        med_init(&enc, &mem);
+        med_set_net(&enc, 8);
+        med_set_vnd(&enc, 9); /* Cisco PEN*/
+        PUTLONG(&bw, 10);
+        med_add_tag(&enc, MED_TAG_BW, sizeof(bw), (uint8_t*)&bw);
+        med_set_downstream(&enc);
+        PUTLONG(&appid, 144);
+        med_add_tag(&enc, MED_TAG_APP_ID, sizeof(appid), (uint8_t*)&appid);
+
+        /* Sizeof */
+        if (MED_IS_ERROR(med_sizeof(&enc, &len))) {
+            TEST_FAIL("Sizeof failed at: %zu", len);
+            return 1;
+        }
+
+        if (len != expected_len) {
+            TEST_FAIL("Expected sizeof: %zu got %zu", expected_len, len);
+            return 1;
+        }
+
+        TEST_PASS("Expected and returned len match: %zu", len);
+
+        if (MED_IS_ERROR(med_encode(buf, &len, &enc))) {
+            TEST_FAIL("Encode failed at: %zu", len);
+            return 1;
+        }
+
+        if (0 != med_memcmp(expected_encoding, buf, expected_len)) {
+            TEST_FAIL("The two buffers don't match:");
+            TEST_FAIL("Expected: %zu\n", expected_len);
+            med_dump_buf(expected_encoding, expected_len);
+            TEST_FAIL("Received: %zu\n", len);
+            med_dump_buf(buf, expected_len);
+            return 1;
+        }
+
+        TEST_PASS("The two buffer match");
+
+    }
+
     /* Test 
      * Endpoint, Standard 1 up, 1 down
      * Network, Vendor 1 up, 1 down
@@ -692,7 +883,7 @@ int main(void)
             0x00, 0x00, 0x00, 0x04, 0x00, 0x00,
             0x00, 0x0A, MED_DN_TYPE >> 8, MED_DN_TYPE,
             0x00, 0x08, 0x00, 0x01, 0x00, 0x04,
-            0x00, 0x00, 0x00, 0x90, MED_PROD_TYPE >> 8, MED_PROD_TYPE,
+            0x00, 0x00, 0x00, 0x90, MED_NET_TYPE >> 8, MED_NET_TYPE,
             0x00, 0x04, 0x00, 0x00, 0x00, 0x08,
             MED_VND_TYPE >> 8, MED_VND_TYPE,
             0x00, 0x04, 0x00, 0x00, 0x00, 0x09,
@@ -760,6 +951,84 @@ int main(void)
         TEST_PASS("The two buffer match");
 
     }
+
+    /* Test External
+     * Endpoint, Standard 1 up, 1 down
+     * Network, Vendor 1 up, 1 down
+     */
+    {
+        md_enc_t enc = {0};
+        uint32_t bw = 0;
+        uint32_t appid = 0;
+        size_t len = 0;
+        const size_t expected_len = 65;
+        /* version | UP [bw=10] | DN[appid=144] | NET=8 |VND = 9 | UP [bw=10] | DN[appid=144] */
+        uint8_t expected_encoding[65] = {
+            MED_VERSION, MED_UP_TYPE >> 8, MED_UP_TYPE,  0x00, 0x08,
+            0x00, 0x00, 0x00, 0x04, 0x00, 0x00,
+            0x00, 0x0A, MED_DN_TYPE >> 8, MED_DN_TYPE,
+            0x00, 0x08, 0x00, 0x01, 0x00, 0x04,
+            0x00, 0x00, 0x00, 0x90, MED_NET_TYPE >> 8, MED_NET_TYPE,
+            0x00, 0x04, 0x00, 0x00, 0x00, 0x08,
+            MED_VND_TYPE >> 8, MED_VND_TYPE,
+            0x00, 0x04, 0x00, 0x00, 0x00, 0x09,
+            MED_UP_TYPE >> 8, MED_UP_TYPE,  0x00, 0x08,
+            0x00, 0x00, 0x00, 0x04, 0x00, 0x00,
+            0x00, 0x0A, MED_DN_TYPE >> 8, MED_DN_TYPE,
+            0x00, 0x08, 0x00, 0x01, 0x00, 0x04,
+            0x00, 0x00, 0x00, 0x90
+        };
+        uint8_t buf[65] = {0};
+        med_mem_t mem = {0};
+
+
+        /* Setup */
+        mem.alloc = test_alloc;
+        mem.dealloc = test_dealloc;
+        med_init(&enc, &mem);
+        PUTLONG(&bw, 10);
+        med_add_tag(&enc, MED_TAG_BW, sizeof(bw), (uint8_t*)&bw);
+        med_set_downstream(&enc);
+        PUTLONG(&appid, 144);
+        med_add_tag(&enc, MED_TAG_APP_ID, sizeof(appid), (uint8_t*)&appid);
+        med_set_net(&enc, 8);
+        med_set_vnd(&enc, 9); /* Cisco PEN*/
+        med_set_upstream(&enc);
+        med_add_tag(&enc, MED_TAG_BW, sizeof(bw), (uint8_t*)&bw);
+        med_set_downstream(&enc);
+        med_add_tag(&enc, MED_TAG_APP_ID, sizeof(appid), (uint8_t*)&appid);
+
+        /* Sizeof */
+        if (MED_IS_ERROR(med_sizeof(&enc, &len))) {
+            TEST_FAIL("Sizeof failed at: %zu", len);
+            return 1;
+        }
+
+        if (len != expected_len) {
+            TEST_FAIL("Expected sizeof: %zu got %zu", expected_len, len);
+            return 1;
+        }
+
+        TEST_PASS("Expected and returned len match: %zu", len);
+
+        if (MED_IS_ERROR(med_encode(buf, &len, &enc))) {
+            TEST_FAIL("Encode failed at: %zu", len);
+            return 1;
+        }
+
+        if (0 != med_memcmp(expected_encoding, buf, expected_len)) {
+            TEST_FAIL("The two buffers don't match:");
+            TEST_FAIL("Expected: %zu\n", expected_len);
+            med_dump_buf(expected_encoding, expected_len);
+            TEST_FAIL("Received: %zu\n", len);
+            med_dump_buf(buf, expected_len);
+            return 1;
+        }
+
+        TEST_PASS("The two buffer match");
+
+    }
+
     TEST_PASS("ALL TEST PASS");
 
     return 0;

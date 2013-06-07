@@ -596,7 +596,7 @@ static med_err_t med_encode_prod(md_producer_t* prod, void* ctx)
         DEBUG_INVALID;
         return MED_MEM;
     }
-    PUTSHORT_MV(encode_ctx->buf, MED_PROD_TYPE);
+    PUTSHORT_MV(encode_ctx->buf, MED_NET_TYPE);
     PUTSHORT_MV(encode_ctx->buf, MED_PROD_LEN);
     PUTLONG_MV(encode_ctx->buf, prod->precedence);
     *(encode_ctx->len) -= MED_TLV_HDR + MED_PROD_LEN;
@@ -1023,13 +1023,13 @@ static med_err_t _cb_tlv(md_tag_t* tag, void* ctx)
     return MED_OK;
 }
 /* -------------------------------------------------------------------------- */
-med_err_t med_walk_public(md_enc_t const *enc, med_walk_callbacks_t const *cb,void *ctx)
+med_err_t med_walk_public(md_enc_t *enc, med_walk_callbacks_t *cb,void *ctx)
 {
     med_callback_user_t user_callbacks;
     user_callbacks.callbacks = cb;
     user_callbacks.user_context = ctx;
 
-    static const med_op_t operations = {
+    static med_op_t operations = {
         .tlv        = _cb_tlv,
         .upstream   = _cb_upstream,
         .downstream = _cb_downstream,

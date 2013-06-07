@@ -32,7 +32,7 @@
 #define MED_UP_TYPE     1
 #define MED_DN_TYPE     2
 #define MED_VND_TYPE    3
-#define MED_PROD_TYPE   4
+#define MED_NET_TYPE    4
 
 typedef struct md_tag_ {
     uint16_t type;

@@ -279,7 +279,7 @@ static bool _decode_producer_subblocks(med_mem_t const *mem,uint16_t block_type,
         }
         *remain -= block_length;
         break;
-    case MED_PROD_TYPE:
+    case MED_NET_TYPE:
         DECODE_DBG("> next producer");
         return true;
     default:
@@ -289,7 +289,7 @@ static bool _decode_producer_subblocks(med_mem_t const *mem,uint16_t block_type,
     if (0 != *remain) {
         uint16_t next_block_type = GETSHORT(*buffer);
         DECODE_DBG("Next block type 0x%04X",next_block_type);
-        if (MED_PROD_TYPE != next_block_type) {
+        if (MED_NET_TYPE != next_block_type) {
             if (!_consumeX(2,buffer,remain)) {
                 REPORT_FAILURE;
             }
@@ -340,15 +340,15 @@ static bool _decode_producer_block(med_mem_t const *mem,md_producer_t**prod,
         if (NULL == new_producer) {
             REPORT_FAILURE;
         }
-        new_producer->type = 0; /* ENDPOINT */
+        new_producer->type = MED_PROD_EP; /* ENDPOINT */
         break;
-    case MED_PROD_TYPE:
+    case MED_NET_TYPE:
         DECODE_DBG("found a non-endpoint producer");
         new_producer = _create_new_producer(mem);
         if (NULL == new_producer) {
             REPORT_FAILURE;
         }
-        new_producer->type = MED_PROD_TYPE;
+        new_producer->type = MED_PROD_NET;
         if (!_consume2(&producer_length, buffer, remain)) {
             freeprod(mem,new_producer);
             REPORT_FAILURE;
