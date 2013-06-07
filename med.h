@@ -222,7 +222,6 @@ med_err_t med_encode(uint8_t* buf,
  *  @param[in] buf buffer to decode
  *  @param[in, out] len length of the buffer / decoded length
  *  @param[in] prods producer decoded
- *  @param[in] alloc allocator to be used for decoding
  *
  *  @return #med_err_t
  *
@@ -230,8 +229,7 @@ med_err_t med_encode(uint8_t* buf,
  */
 med_err_t med_decode(const uint8_t* buf,
                      size_t* len,
-                     md_enc_t* enc,
-                     med_mem_t mem);
+                     md_enc_t* enc);
 /** med_sizeof
  *
  *  The function computes the size of the buffer needed to encode a given
@@ -268,6 +266,6 @@ typedef struct {
     med_preamble_callback preamble;
 } med_walk_callbacks_t;
 
-med_err_t med_walk_public(md_enc_t *enc, med_walk_callbacks_t *cb,void *ctx);
+med_err_t med_walk(md_enc_t *enc, med_walk_callbacks_t *cb,void *ctx);
 
 #endif /* __MED_H__ */

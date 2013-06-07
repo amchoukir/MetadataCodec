@@ -8,7 +8,7 @@
  *          Begin common
  * ------------------------------------------------------------------
  */
-static med_err_t med_walk(md_enc_t* enc,
+static med_err_t med_walk_priv(md_enc_t* enc,
                           med_op_t* op,
                           void* ctx);
 
@@ -558,7 +558,7 @@ med_err_t med_sizeof(md_enc_t* enc,
         DEBUG_INVALID;
         return err;
     }
-    return med_walk(enc, &sizeof_op, &sizeof_ctx);
+    return med_walk_priv(enc, &sizeof_op, &sizeof_ctx);
 }
 /* ------------------------------------------------------------------
  *          End sizeof callbacks
@@ -719,7 +719,7 @@ med_err_t med_encode(uint8_t* buf,
         DEBUG_INVALID;
         return err;
     }
-    return med_walk(enc, &encode_op, &encode_ctx);
+    return med_walk_priv(enc, &encode_op, &encode_ctx);
 }
 /* ------------------------------------------------------------------
  *          End encode callbacks
@@ -883,7 +883,7 @@ med_err_t med_validate(md_enc_t* enc)
         DEBUG_INVALID;
         return MED_BAD;
     }
-    if (MED_IS_ERROR(err = med_walk(enc, &validate_op, NULL))) {
+    if (MED_IS_ERROR(err = med_walk_priv(enc, &validate_op, NULL))) {
         DEBUG_INVALID;
         return err;
     }
@@ -908,7 +908,7 @@ static med_err_t med_walk_direction(md_tag_t* tags,
     return err;
 }
 
-static med_err_t med_walk(md_enc_t* enc,
+static med_err_t med_walk_priv(md_enc_t* enc,
                           med_op_t* op,
                           void* ctx)
 {
@@ -960,70 +960,77 @@ typedef struct {
 /* -------------------------------------------------------------------------- */
 static med_err_t _cb_prod(md_producer_t* prod, void* ctx)
 {
+    bool keep_going = true;
     med_callback_user_t *cb = (typeof(cb))ctx;
     if (NULL != cb->callbacks->prod) {
-        (void)cb->callbacks->prod(prod->precedence, cb->user_context);
+        keep_going = cb->callbacks->prod(prod->precedence, cb->user_context);
     }
-    return MED_OK;
+    return keep_going ? MED_OK : MED_BAD;
 }
 /* -------------------------------------------------------------------------- */
 static med_err_t _cb_token(md_sec_t* sec, void* ctx)
 {
+    bool keep_going = true;
     med_callback_user_t *cb = (typeof(cb))ctx;
     if (NULL != cb->callbacks->token) {
-        (void)cb->callbacks->token(sec->length,sec->scheme,sec->payload,
+        keep_going = cb->callbacks->token(sec->length,sec->scheme,sec->payload,
                                                         cb->user_context);
     }
-    return MED_OK;
+    return keep_going ? MED_OK : MED_BAD;
 }
 /* -------------------------------------------------------------------------- */
 static med_err_t _cb_preamble(md_enc_t* enc, void* ctx)
 {
+    bool keep_going = true;
     med_callback_user_t *cb = (typeof(cb))ctx;
     if (NULL != cb->callbacks->preamble) {
-        (void)cb->callbacks->preamble(cb->user_context);
+        keep_going = cb->callbacks->preamble(cb->user_context);
     }
-    return MED_OK;
+    return keep_going ? MED_OK : MED_BAD;
 }
 /* -------------------------------------------------------------------------- */
 static med_err_t _cb_downstream(md_tag_t* taglist, void* ctx)
 {
+    bool keep_going = true;
     med_callback_user_t *cb = (typeof(cb))ctx;
     if (NULL != cb->callbacks->downstream) {
-        (void)cb->callbacks->downstream(cb->user_context);
+        keep_going = cb->callbacks->downstream(cb->user_context);
     }
-    return MED_OK;
+    return keep_going ? MED_OK : MED_BAD;
 }
 /* -------------------------------------------------------------------------- */
 static med_err_t _cb_upstream(md_tag_t* taglist, void* ctx)
 {
+    bool keep_going = true;
     med_callback_user_t *cb = (typeof(cb))ctx;
     if (NULL != cb->callbacks->upstream) {
-        (void)cb->callbacks->upstream(cb->user_context);
+        keep_going = cb->callbacks->upstream(cb->user_context);
     }
-    return MED_OK;
+    return keep_going ? MED_OK : MED_BAD;
 }
 /* -------------------------------------------------------------------------- */
 static med_err_t _cb_vnd(md_pen_t* pen, void* ctx)
 {
+    bool keep_going = true;
     med_callback_user_t *cb = (typeof(cb))ctx;
     if (NULL != cb->callbacks->vnd) {
-        (void)cb->callbacks->vnd(pen->id,cb->user_context);
+        keep_going = cb->callbacks->vnd(pen->id,cb->user_context);
     }
-    return MED_OK;
+    return keep_going ? MED_OK : MED_BAD;
 }
 /* -------------------------------------------------------------------------- */
 static med_err_t _cb_tlv(md_tag_t* tag, void* ctx)
 {
+    bool keep_going = true;
     med_callback_user_t *cb = (typeof(cb))ctx;
     if (NULL != cb->callbacks->tlv) {
-        (void)cb->callbacks->tlv(tag->type,tag->length,tag->value,
+        keep_going = cb->callbacks->tlv(tag->type,tag->length,tag->value,
                                                cb->user_context);
     }
-    return MED_OK;
+    return keep_going ? MED_OK : MED_BAD;
 }
 /* -------------------------------------------------------------------------- */
-med_err_t med_walk_public(md_enc_t *enc, med_walk_callbacks_t *cb,void *ctx)
+med_err_t med_walk(md_enc_t *enc, med_walk_callbacks_t *cb,void *ctx)
 {
     med_callback_user_t user_callbacks;
     user_callbacks.callbacks = cb;
@@ -1039,5 +1046,8 @@ med_err_t med_walk_public(md_enc_t *enc, med_walk_callbacks_t *cb,void *ctx)
         .preamble   = _cb_preamble,
     };
 
-    return med_walk(enc,&operations,&user_callbacks);
+    /* We don't care return code from walk - BTW it may return an error if
+       a callback instructs us to stop walking. */
+    (void)med_walk_priv(enc,&operations,&user_callbacks);
+    return MED_OK;
 }
