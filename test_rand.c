@@ -8,13 +8,14 @@
 
 void random_add_tag(md_enc_t *enc)
 {
+    #define TAG_MAX_LEN (1 << 5) /* 32 bytes max, should be enough */
     uint16_t t,l;
-    unsigned char value[512];
-    memset(value,rand() & 255,512);
+    unsigned char value[TAG_MAX_LEN];
     t = rand() & 0xFFFF;
-    l = rand() & 511;
+    l = rand() & (TAG_MAX_LEN - 1);
     printf("-- %s (l:%u)",__func__,l);
     if (0 == l) l = 1;
+    memset(value,rand() & 255,l);
     if (MED_IS_OK(med_add_tag(enc,t,l,value))) {
         printf(" ... OK\n");
     } else {
@@ -40,6 +41,8 @@ void random_set_up(md_enc_t *enc)
     } else {
         printf(" ... FAILED!!!\n");
     }
+    /* upstream block must have at least one tag */
+    random_add_tag(enc);
 }
 
 void random_set_dn(md_enc_t *enc)
@@ -50,6 +53,8 @@ void random_set_dn(md_enc_t *enc)
     } else {
         printf(" ... FAILED!!!\n");
     }
+    /* downstream block must have at least one tag */
+    random_add_tag(enc);
 }
 
 void random_set_net(md_enc_t *enc)
@@ -62,12 +67,13 @@ void random_set_net(md_enc_t *enc)
     }
 }
 
+#define SEC_MAX_LEN (1 << 5) /* 32 bytes max, should be enough */
 void random_add_tok(md_enc_t *enc)
 {
     uint16_t type = rand() & 0xFFFF;
-    unsigned char payload[512];
-    memset(payload,rand() & 255,512);
-    uint16_t length = rand() & 511;
+    unsigned char payload[SEC_MAX_LEN];
+    uint16_t length = rand() & (SEC_MAX_LEN - 1);
+    memset(payload,rand() & 255,length);
     printf("-- %s",__func__);
     if (MED_IS_OK(med_add_tok(enc,type,length,payload))) {
         printf(" ... OK\n");
@@ -101,16 +107,16 @@ int test_rand (void)
 
     random_action actions[] = {
         random_add_tag,
-    //    random_set_vnd,
-    //    random_set_up,
-    //    random_set_dn,
+        random_set_vnd,
+        random_set_up,
+        random_set_dn,
     //    random_set_net,
     //    random_add_tok,
     };
     //med_set_std
     //med_set_ep
 
-    unsigned int loops = 512;
+    unsigned int loops = 0xFFFF;
     while (--loops) {
         actions[rand()%(sizeof(actions)/sizeof(actions[0]))](&enc);
         fflush(stdout);
@@ -126,13 +132,17 @@ int test_rand (void)
     assert(NULL != buffer);
     if (MED_IS_OK(med_encode(buffer,&len,&enc))) {
         med_dump_buf(buffer,length);
+        len = length;
+        md_producer_t *head = NULL;
+        med_decode_producers(buffer,&len,&head,&enc.mem);
+        if (NULL != head) {
+            freeprod(&enc.mem,head);
+        }
     } else {
         printf("med_encode failed.\n");
     }
 
     return 0;
 }
-
-
 
 /// gcc -Wall -O0 -g -o test  med.c med_decode.c  test.c -DMED_DEBUG
