@@ -9,7 +9,7 @@
 void random_add_tag(md_enc_t *enc)
 {
     uint16_t t,l;
-    char value[512];
+    unsigned char value[512];
     memset(value,rand() & 255,512);
     t = rand() & 0xFFFF;
     l = rand() & 511;
@@ -65,7 +65,7 @@ void random_set_net(md_enc_t *enc)
 void random_add_tok(md_enc_t *enc)
 {
     uint16_t type = rand() & 0xFFFF;
-    char payload[512];
+    unsigned char payload[512];
     memset(payload,rand() & 255,512);
     uint16_t length = rand() & 511;
     printf("-- %s",__func__);
@@ -122,7 +122,7 @@ int test_rand (void)
     }
     length = len;
     printf("%u bytes required to encode\n",(unsigned int)length);
-    char *buffer = malloc(len);
+    unsigned char *buffer = malloc(len);
     assert(NULL != buffer);
     if (MED_IS_OK(med_encode(buffer,&len,&enc))) {
         med_dump_buf(buffer,length);

@@ -213,9 +213,6 @@ med_err_t med_add_tag(md_enc_t* enc,
                       uint16_t length,
                       uint8_t* value)
 {
-    md_pen_t* pen_pred;
-    md_pen_t* pen;
-    md_tag_t* tag;
     med_err_t err;
 
     if (!enc || !length || !value) {
@@ -243,59 +240,65 @@ pen:
         goto tlv;
     }
 
-    lookup_pen(enc, enc->id, &pen_pred, &pen);
-    if (!pen) {
-        pen = enc->mem.alloc(sizeof(md_pen_t), enc->mem.alloc_ctx);
-        if (!pen) {
-            DEBUG_INVALID;
-            return MED_MEM;
-        }
-        med_memset(pen, 0, sizeof(md_pen_t));
-        pen->id = enc->id;
-        /* TODO: change prod to cur_prod*/
-        if (MED_PEN_STD == enc->id){
-            pen->next = enc->prod->pens;
-            enc->prod->pens = pen;
-        }else if (!pen_pred) {
-            enc->prod->pens = pen;
-        } else {
-            pen_pred->next = pen;
-        }
+    {
+            md_pen_t* pen_pred;
+            md_pen_t* pen;
+            lookup_pen(enc, enc->id, &pen_pred, &pen);
+            if (!pen) {
+                    pen = enc->mem.alloc(sizeof(md_pen_t), enc->mem.alloc_ctx);
+                    if (!pen) {
+                            DEBUG_INVALID;
+                            return MED_MEM;
+                    }
+                    med_memset(pen, 0, sizeof(md_pen_t));
+                    pen->id = enc->id;
+                    /* TODO: change prod to cur_prod*/
+                    if (MED_PEN_STD == enc->id){
+                            pen->next = enc->prod->pens;
+                            enc->prod->pens = pen;
+                    }else if (!pen_pred) {
+                            enc->prod->pens = pen;
+                    } else {
+                            pen_pred->next = pen;
+                    }
 
+            }
+            /* TODO: Change pen to cur_pen*/
+            enc->pen = pen;
     }
-    /* TODO: Change pen to cur_pen*/
-    enc->pen = pen;
 
 tlv:
 
-    lookup_tag(enc, enc->dir, type, &tag);
-    if (!tag) {
-        tag = enc->mem.alloc(sizeof(md_tag_t), enc->mem.alloc_ctx);
+{
+        md_tag_t* tag;
+        lookup_tag(enc, enc->dir, type, &tag);
         if (!tag) {
-            DEBUG_INVALID;
-            return MED_MEM;
-        }
-        med_memset(tag, 0, sizeof(md_tag_t));
-        tag->type = type;
-        if (enc->dir == MED_UP_TYPE) {
-            tag->next = pen->upstream;
-            pen->upstream = tag;
+                tag = enc->mem.alloc(sizeof(md_tag_t), enc->mem.alloc_ctx);
+                if (!tag) {
+                        DEBUG_INVALID;
+                        return MED_MEM;
+                }
+                med_memset(tag, 0, sizeof(md_tag_t));
+                tag->type = type;
+                if (enc->dir == MED_UP_TYPE) {
+                        tag->next = enc->pen->upstream;
+                        enc->pen->upstream = tag;
+                } else {
+                        tag->next = enc->pen->downstream;
+                        enc->pen->downstream = tag;
+                }
         } else {
-            tag->next = pen->downstream;
-            pen->downstream = tag;
+                if (tag->length != length) {
+                        enc->mem.dealloc(tag->value, enc->mem.dealloc_ctx);
+                        tag->value = NULL;
+                }
         }
-    } else {
-        if (tag->length != length) {
-            enc->mem.dealloc(tag->value, enc->mem.dealloc_ctx);
-            tag->value = NULL;
+        tag->length = length;
+        if (!tag->value) {
+                tag->value = enc->mem.alloc(length, enc->mem.alloc_ctx);
         }
-    }
-    tag->length = length;
-    if (!tag->value) {
-        tag->value = enc->mem.alloc(length, enc->mem.alloc_ctx);
-    }
-    med_memcpy(tag->value, value, length);
-
+        med_memcpy(tag->value, value, length);
+}
 
     return MED_OK;
 }
@@ -563,11 +566,11 @@ med_err_t med_sizeof(md_enc_t* enc,
 {
     med_sizeof_ctx_t sizeof_ctx = {len};
     med_err_t err;
-    *len = 0;
     if (!enc || !len) {
         DEBUG_INVALID;
         return MED_BAD;
     }
+    *len = 0;
     if (MED_IS_ERROR(err = med_validate(enc))) {
         DEBUG_INVALID;
         return err;

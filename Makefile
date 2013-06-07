@@ -24,13 +24,21 @@ strip: libraries
 	strip --strip-all libmedenc*
 
 test: $(SRC)
-	gcc -o $@ $^ $(CFLAGS)
+	gcc -o $@ $^ $(CFLAGS) -O0 -g
 
-coverage:
+coverage: $(SRC)
 	gcc -o $@ $^ $(CFLAGS) -O0 -static -fprofile-arcs -ftest-coverage
+	./coverage
+	geninfo --no-checksum --output-filename med.info .
+	genhtml -o med_html med.info
+
+static_analysis:
+	cppcheck --force --enable=all .
 
 clean:
 	-rm test
+	-rm med.info
+	-rm -rf med_html
 	-rm coverage
 	-rm libmedenc*
 	-rm *.o
