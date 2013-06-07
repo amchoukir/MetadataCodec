@@ -46,7 +46,14 @@
 #define REPORT_FAILURE { printf("FAILURE#%u\n",__LINE__); return false;}
 #define DECODE_DBG(fmt,...) \
     { printf("[%-28s:%4u] " fmt "\n",__func__,__LINE__,##__VA_ARGS__); }
+
 void freeprod(med_mem_t const *mem,md_producer_t *prod);
+void med_free(md_enc_t* enc)
+{
+    freeprod(&(enc->mem), enc->prods);
+    med_memset(enc, 0, sizeof(md_enc_t));
+}
+
 /* -------------------------------------------------------------------------- */
 void *_malloc(size_t size, void *__unused__)
 {

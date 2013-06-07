@@ -187,6 +187,8 @@ int main(void)
             return 1;
         }
 
+        med_free(&enc);
+
         TEST_PASS("The two buffer match");
 
 
@@ -578,6 +580,8 @@ int main(void)
             return 1;
         }
 
+        med_free(&enc);
+
         TEST_PASS("The two buffer match");
 
     }
@@ -713,6 +717,7 @@ int main(void)
             return 1;
         }
 
+        med_free(&enc);
         TEST_PASS("The two buffer match");
 
     }
@@ -857,6 +862,7 @@ int main(void)
             return 1;
         }
 
+        med_free(&enc);
         TEST_PASS("The two buffer match");
 
     }
@@ -1029,6 +1035,7 @@ int main(void)
 
     }
 
+    med_free(&enc);
     TEST_PASS("ALL TEST PASS");
 
     return 0;

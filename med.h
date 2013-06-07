@@ -77,6 +77,18 @@ typedef struct med_mem_ {
  */
 med_err_t med_init(md_enc_t* enc, med_mem_t* mem);
 
+/** med_free
+ *
+ *  Free up any encoding internal resources allocated.
+ *
+ *  @param[in] enc encoding instance to free
+ *
+ *  @note It is the responsibility of the caller to free
+ *  the md_enc_t data structure if dynamically allocated.
+ *
+ */
+void med_free(md_enc_t* enc);
+
 /** med_add_tok
  *
  *  Adds a security token to the encoding instance for
