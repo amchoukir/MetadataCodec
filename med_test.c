@@ -1031,11 +1031,11 @@ int main(void)
             return 1;
         }
 
+        med_free(&enc);
         TEST_PASS("The two buffer match");
 
     }
 
-    med_free(&enc);
     TEST_PASS("ALL TEST PASS");
 
     return 0;
