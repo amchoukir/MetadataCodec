@@ -88,7 +88,7 @@ static void test_dealloc(void* ptr, void* ctx)
 
 typedef void(*random_action)(md_enc_t*);
 
-int main (int argc, char *argv[])
+int test_rand (void)
 {
     med_mem_t mem = { 0 };
     md_enc_t  enc = { 0 };

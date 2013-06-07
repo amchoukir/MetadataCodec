@@ -31,7 +31,9 @@ static void test_dealloc(void* ptr, void* ctx)
 {
     free(ptr);
 }
+
 int test_decode(void);
+int test_rand (void);
 
 int main(void)
 {
@@ -1165,6 +1167,9 @@ int main(void)
         TEST_PASS("The two buffer match");
 
     }
+
+    /* Test random */
+    test_rand();
 
     TEST_PASS("ALL TEST PASS");
 

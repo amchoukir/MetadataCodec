@@ -56,17 +56,19 @@ void* med_memset(void *sp, int c, size_t len)
 
 void med_dump_buf(const void* sp, size_t len)
 {
+#ifdef MED_DEBUG
     size_t i;
     size_t count = 1;
     const uint8_t* p = sp;
     for (i = 0; i < len; ++i)
     {
         if (0 == (count%10)) {
-            fprintf(stderr, "\n");
+            DEBUG("\n");
         }
-        fprintf(stderr, "0x%02x ", p[i]);
+        DEBUG("0x%02x ", p[i]);
         ++count;
     }
+#endif
 }
 
 void* med_memcpy(void* dst, void* src, size_t len)
@@ -697,9 +699,6 @@ static med_err_t med_encode_tlv(md_tag_t* tag, void* ctx)
         DEBUG_INVALID;
         return MED_MEM;
     }
-    DEBUG_ERR("Type: %u, Length: %u, Value:", tag->type, tag->length);
-    med_dump_buf(tag->value, tag->length);
-    fprintf(stderr, "\n");
     PUTSHORT_MV(encode_ctx->buf, tag->type);
     PUTSHORT_MV(encode_ctx->buf, tag->length);
     med_memcpy(encode_ctx->buf, tag->value, tag->length);
@@ -757,7 +756,6 @@ static med_err_t med_validate_preamble(md_enc_t* enc, void* ctx)
         tmp = current->next;
         while (tmp) {
             if (MED_PROD_EP == tmp->type) {
-                DEBUG_ERR("ep_found: %d", ep_found);
                 if(ep_found) {
                     DEBUG_INVALID;
                     return MED_BAD;
@@ -775,7 +773,6 @@ static med_err_t med_validate_preamble(md_enc_t* enc, void* ctx)
 
     /* Bring the endpoint as first producer*/
     if (ep_found && MED_PROD_EP != enc->prods->type) {
-        DEBUG_ERR("Endpoint wrong order");
         tmp = enc->prods;
         current = tmp->next;
         while (current) {
