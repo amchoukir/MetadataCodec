@@ -58,7 +58,7 @@ void _dealloc(void *ptr, void *__unused__)
     return free(ptr);
 }
 /* -------------------------------------------------------------------------- */
-static bool consume1(uint8_t *value, uint8_t const **data, size_t *remain)
+static bool _consume1(uint8_t *value, uint8_t const **data, size_t *remain)
 {
     const size_t size = 1;
     if (size <= *remain) {
@@ -66,7 +66,7 @@ static bool consume1(uint8_t *value, uint8_t const **data, size_t *remain)
             *value = **data;
         }
         *remain -= size;
-        DECODE_DBG("consume %02X (%u bytes left)",(*data)[0],
+        DECODE_DBG("consume '%02X' (%u bytes left)",(*data)[0],
                                                         (unsigned int)*remain);
         *data += size;
         return true;
@@ -74,7 +74,7 @@ static bool consume1(uint8_t *value, uint8_t const **data, size_t *remain)
     return false;
 }
 /* -------------------------------------------------------------------------- */
-static bool consume2(uint16_t *value, uint8_t const **data, size_t *remain)
+static bool _consume2(uint16_t *value, uint8_t const **data, size_t *remain)
 {
     const size_t size = 2;
     if (size <= *remain) {
@@ -82,7 +82,7 @@ static bool consume2(uint16_t *value, uint8_t const **data, size_t *remain)
             *value = GETSHORT(*data);
         }
         *remain -= size;
-        DECODE_DBG("consume %02X %02X (%u bytes left)",(*data)[0],(*data)[1],
+        DECODE_DBG("consume '%02X %02X' (%u bytes left)",(*data)[0],(*data)[1],
                                                         (unsigned int)*remain);
         *data += size;
         return true;
@@ -90,7 +90,7 @@ static bool consume2(uint16_t *value, uint8_t const **data, size_t *remain)
     return false;
 }
 /* -------------------------------------------------------------------------- */
-static bool consume4(uint32_t *value, uint8_t const **data, size_t *remain)
+static bool _consume4(uint32_t *value, uint8_t const **data, size_t *remain)
 {
     const size_t size = 4;
     if (size <= *remain) {
@@ -98,7 +98,7 @@ static bool consume4(uint32_t *value, uint8_t const **data, size_t *remain)
             *value = GETLONG(*data);
         }
         *remain -= size;
-        DECODE_DBG("consume %02X %02X %02X %02X (%u bytes left)",
+        DECODE_DBG("consume '%02X %02X %02X %02X' (%u bytes left)",
                         (*data)[0],(*data)[1],(*data)[2],(*data)[3],
                                                 (unsigned int)*remain);
         *data += size;
@@ -107,11 +107,13 @@ static bool consume4(uint32_t *value, uint8_t const **data, size_t *remain)
     return false;
 }
 /* -------------------------------------------------------------------------- */
-static bool consumeX(size_t size, uint8_t const **data, size_t *remain)
+static bool _consumeX(size_t size, uint8_t const **data, size_t *remain)
 {
     if (size <= *remain) {
         *data += size;
         *remain -= size;
+        DECODE_DBG("consume %u bytes (%u bytes left)",(unsigned int)size,
+                                                      (unsigned int)*remain);
         return true;
     }
     return false;
@@ -137,7 +139,7 @@ static md_sec_t* _create_security(med_mem_t const *mem)
     return sec;
 }
 /* -------------------------------------------------------------------------- */
-static void freetag(med_mem_t const *mem,md_tag_t *tag)
+static void _freetag(med_mem_t const *mem,md_tag_t *tag)
 {
     md_tag_t *next = tag->next;
     if (NULL != tag->value) {
@@ -147,7 +149,7 @@ static void freetag(med_mem_t const *mem,md_tag_t *tag)
     medmemset(tag,0xA5,sizeof(*tag));
     mem->dealloc(tag,mem->dealloc_ctx);
     if (NULL != next) {
-        freetag(mem,next);
+        _freetag(mem,next);
     }
 }
 /* -------------------------------------------------------------------------- */
@@ -165,10 +167,10 @@ static bool _decode_tlvs(med_mem_t const *mem, md_tag_t **const list_head,
 {
     while (0 != block_length) {
         uint16_t t,l;
-        if (!consume2(&t,buffer,&block_length)) {
+        if (!_consume2(&t,buffer,&block_length)) {
             REPORT_FAILURE;
         }
-        if (!consume2(&l,buffer,&block_length)) {
+        if (!_consume2(&l,buffer,&block_length)) {
             REPORT_FAILURE;
         }
         md_tag_t *new_tag = _create_tag(mem);
@@ -183,8 +185,8 @@ static bool _decode_tlvs(med_mem_t const *mem, md_tag_t **const list_head,
             REPORT_FAILURE;
         }
         medmemcpy(new_tag->value,*buffer,l);
-        if (!consumeX((size_t)l,buffer,&block_length)) {
-            freetag(mem,new_tag);
+        if (!_consumeX((size_t)l,buffer,&block_length)) {
+            _freetag(mem,new_tag);
             new_tag = NULL;
             REPORT_FAILURE;
         }
@@ -196,7 +198,7 @@ static bool _decode_tlvs(med_mem_t const *mem, md_tag_t **const list_head,
     return true;
 }
 /* -------------------------------------------------------------------------- */
-static bool decode_producer_subblocks(med_mem_t const *mem,uint16_t block_type,
+static bool _decode_producer_subblocks(med_mem_t const *mem,uint16_t block_type,
                     md_producer_t *prod, uint8_t const **buffer, size_t *remain)
 {
     uint16_t pen_length;
@@ -218,11 +220,11 @@ static bool decode_producer_subblocks(med_mem_t const *mem,uint16_t block_type,
         if (NULL == prod->token) {
             REPORT_FAILURE;
         }
-        if (!consume2(&prod->token->length,buffer,remain)) {
+        if (!_consume2(&prod->token->length,buffer,remain)) {
             REPORT_FAILURE;
         }
         DECODE_DBG("security payload length:%u",prod->token->length);
-        if (!consume2(&prod->token->scheme,buffer,remain)) {
+        if (!_consume2(&prod->token->scheme,buffer,remain)) {
             REPORT_FAILURE;
         }
         DECODE_DBG("security scheme: 0x%04X",prod->token->scheme);
@@ -235,13 +237,13 @@ static bool decode_producer_subblocks(med_mem_t const *mem,uint16_t block_type,
                 REPORT_FAILURE;
             }
             medmemcpy(prod->token->payload,*buffer,prod->token->length);
-            if (!consumeX(prod->token->length,buffer,remain)) {
+            if (!_consumeX(prod->token->length,buffer,remain)) {
                 REPORT_FAILURE;
             }
         }
         break;
     case MED_VND_TYPE:
-        if (!consume2(&pen_length, buffer,remain)) {
+        if (!_consume2(&pen_length, buffer,remain)) {
             REPORT_FAILURE;
         }
         /* ASSERT(4 == pen_length) ??? */
@@ -251,13 +253,13 @@ static bool decode_producer_subblocks(med_mem_t const *mem,uint16_t block_type,
         }
         new_pen->next = prod->pens;
         prod->pens = new_pen;
-        if (!consume4(&new_pen->id, buffer, remain)) {
+        if (!_consume4(&new_pen->id, buffer, remain)) {
             REPORT_FAILURE;
         }
         break;
     case MED_UP_TYPE: /* FALLTHRU */
     case MED_DN_TYPE:
-        if (!consume2(&block_length,buffer,remain)) {
+        if (!_consume2(&block_length,buffer,remain)) {
             REPORT_FAILURE;
         }
         if (block_length > *remain) {
@@ -290,10 +292,10 @@ static bool decode_producer_subblocks(med_mem_t const *mem,uint16_t block_type,
         uint16_t next_block_type = GETSHORT(*buffer);
         DECODE_DBG("Next block type 0x%04X",next_block_type);
         if (MED_PROD_TYPE != next_block_type) {
-            if (!consumeX(2,buffer,remain)) {
+            if (!_consumeX(2,buffer,remain)) {
                 REPORT_FAILURE;
             }
-            return decode_producer_subblocks(mem,next_block_type,prod,
+            return _decode_producer_subblocks(mem,next_block_type,prod,
                                                       buffer, remain);
         }
     }
@@ -309,14 +311,14 @@ static md_producer_t *_create_new_producer(med_mem_t const *mem)
     return prod;
 }
 /* -------------------------------------------------------------------------- */
-static bool decode_producer_block(med_mem_t const *mem,md_producer_t**prod,
+static bool _decode_producer_block(med_mem_t const *mem,md_producer_t**prod,
                                         uint8_t const**buffer, size_t *remain)
 {
     md_producer_t *new_producer = NULL;
     uint16_t block_type;
     uint16_t producer_length;
     DECODE_DBG("remain = %u",(unsigned int)*remain);
-    if (!consume2(&block_type,buffer,remain)) {
+    if (!_consume2(&block_type,buffer,remain)) {
         REPORT_FAILURE;
     }
     DECODE_DBG("block type 0x%04X",block_type);
@@ -349,7 +351,7 @@ static bool decode_producer_block(med_mem_t const *mem,md_producer_t**prod,
             REPORT_FAILURE;
         }
         new_producer->type = MED_PROD_TYPE;
-        if (!consume2(&producer_length, buffer, remain)) {
+        if (!_consume2(&producer_length, buffer, remain)) {
             freeprod(mem,new_producer);
             REPORT_FAILURE;
         }
@@ -358,12 +360,12 @@ static bool decode_producer_block(med_mem_t const *mem,md_producer_t**prod,
             freeprod(mem,new_producer);
             REPORT_FAILURE;
         }
-        if (!consume4(&new_producer->precedence,buffer,remain)) {
+        if (!_consume4(&new_producer->precedence,buffer,remain)) {
             freeprod(mem,new_producer);
             REPORT_FAILURE;
         }
         DECODE_DBG("precedence: 0x%08X",new_producer->precedence);
-        if (!consume2(&block_type,buffer,remain)) {
+        if (!_consume2(&block_type,buffer,remain)) {
             REPORT_FAILURE;
         }
         DECODE_DBG("Sub-block type 0x%04X",block_type);
@@ -371,7 +373,7 @@ static bool decode_producer_block(med_mem_t const *mem,md_producer_t**prod,
     default:
         REPORT_FAILURE;
     }
-    if (!decode_producer_subblocks(mem,block_type,new_producer, buffer, remain)) {
+    if (!_decode_producer_subblocks(mem,block_type,new_producer, buffer, remain)) {
         freeprod(mem,new_producer);
         REPORT_FAILURE;
     }
@@ -394,11 +396,11 @@ static void freepen(med_mem_t const *mem,md_pen_t *pen)
 {
     md_pen_t *next = pen->next;
     if (NULL != pen->upstream) {
-        freetag(mem,pen->upstream);
+        _freetag(mem,pen->upstream);
         pen->upstream = NULL;
     }
     if (NULL != pen->downstream) {
-        freetag(mem,pen->downstream);
+        _freetag(mem,pen->downstream);
         pen->downstream = NULL;
     }
     medmemset(pen,0xA5,sizeof(*pen));
@@ -454,14 +456,14 @@ med_err_t med_decode_producers(const uint8_t*const buf,
     const uint8_t *data = buf;
     uint8_t version;
 
-    if (!consume1(&version,&data,&remain)) {
+    if (!_consume1(&version,&data,&remain)) {
         *len = buffer_length - remain;
         return MED_BAD;
     }
 
     while (0 != remain) {
         DECODE_DBG("-- decode a producer");
-        if (!decode_producer_block(&_mem, &head_producer, &data, &remain)) {
+        if (!_decode_producer_block(&_mem, &head_producer, &data, &remain)) {
             *len = buffer_length - remain;
             retcode = MED_BAD;
             break;
