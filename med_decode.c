@@ -485,3 +485,18 @@ med_err_t med_decode_producers(const uint8_t*const buf,
 
     return retcode;
 }
+/* -------------------------------------------------------------------------- */
+med_err_t med_decode(const uint8_t* buf,size_t* len,md_enc_t* enc)
+{
+    med_err_t retcode = MED_OK;
+    retcode = med_decode_producers(buf,len,&enc->prods,&enc->mem);
+    if (MED_IS_OK(retcode)) {
+        DECODE_DBG("Could not validate decoded buffer");
+        retcode = med_validate(enc);
+    }
+    if (MED_IS_ERROR(retcode) && NULL != enc->prods) {
+        freeprod(&enc->mem,enc->prods);
+        enc->prods = NULL;
+    }
+    return retcode;
+}
