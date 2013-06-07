@@ -303,7 +303,6 @@ med_err_t med_add_tok(md_enc_t* enc,
                          uint8_t* payload)
 {
     md_sec_t* token;
-    med_err_t err;
 
     if (!enc || !length || !payload) {
         DEBUG_INVALID;
@@ -315,6 +314,7 @@ med_err_t med_add_tok(md_enc_t* enc,
     if (!enc->prod
         || enc->prod->type != enc->type
         || enc->prod->precedence != enc->precedence) {
+        med_err_t err;
         if (MED_IS_ERROR(err = set_or_create_producer(enc))) {
             return err;
         }
@@ -561,6 +561,7 @@ med_err_t med_sizeof(md_enc_t* enc,
 {
     med_sizeof_ctx_t sizeof_ctx = {len};
     med_err_t err;
+    *len = 0;
     if (!enc || !len) {
         DEBUG_INVALID;
         return MED_BAD;
